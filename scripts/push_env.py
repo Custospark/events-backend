@@ -203,9 +203,10 @@ def build_content(env_name: str, app_key: str = "") -> str:
             if value:
                 values[key] = value
 
-    # Never carry a sandbox IPN id to production; register it on the server
-    # with `php artisan pesapal:register-ipn` after the first deploy.
-    values["PESAPAL_IPN_ID"] = ""
+    # Never carry a sandbox IPN id to production. A production id may be set
+    # explicitly in Backend/.env.production (from `php artisan pesapal:register-ipn`).
+    if not values.get("PESAPAL_IPN_ID"):
+        values["PESAPAL_IPN_ID"] = ""
 
     lines = [f"{key}={q(value)}" for key, value in values.items()]
     return "\n".join(lines) + "\n"
