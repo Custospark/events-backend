@@ -13,5 +13,9 @@ interface AuthServiceInterface
 
     public function register(array $data): User;
 
+    public function sendPasswordResetLink(string $email): string;
+
+    public function resetPassword(array $data): string;
+
     public function logout(User $user): void;
 }

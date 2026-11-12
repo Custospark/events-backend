@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\ResetPasswordNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -59,6 +60,26 @@ class User extends Authenticatable
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
+    }
+
+    public function isOrganizer(): bool
+    {
+        if ($this->is_platform_admin) {
+            return true;
+        }
+
+        $role = $this->role;
+
+        if ($role === null) {
+            return false;
+        }
+
+        return $role->slug === 'admin' || ! empty($role->permissions);
     }
 
     public function hasPermission(string $permission): bool

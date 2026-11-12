@@ -48,6 +48,36 @@ class AuthTest extends TestCase
             ->assertJsonPath('message', 'Invalid email or password.');
     }
 
+    public function test_attendee_without_organizer_access_cannot_log_in(): void
+    {
+        $tenant = $this->makeTenant();
+
+        $attendeeRole = Role::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Attendee',
+            'slug' => 'attendee',
+            'permissions' => [],
+            'is_system' => true,
+        ]);
+
+        $attendee = User::query()->create([
+            'tenant_id' => $tenant->id,
+            'role_id' => $attendeeRole->id,
+            'name' => 'Amina Nakato',
+            'email' => 'amina@students.cocis.ac.ug',
+            'password' => Hash::make('password'),
+            'status' => 'active',
+            'is_platform_admin' => false,
+        ]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => $attendee->email,
+            'password' => 'password',
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'This account does not have organiser access.');
+    }
+
     public function test_authenticated_user_can_fetch_their_profile(): void
     {
         $tenant = $this->makeTenant();

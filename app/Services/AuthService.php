@@ -8,6 +8,7 @@ use App\Repositories\Contracts\TenantRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\AuthServiceInterface;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use RuntimeException;
 
 class AuthService implements AuthServiceInterface
@@ -36,6 +37,10 @@ class AuthService implements AuthServiceInterface
             if ($tenant === null || ! $tenant->isActive()) {
                 throw new RuntimeException('This tenant account is not active.');
             }
+        }
+
+        if (! $user->isOrganizer()) {
+            throw new RuntimeException('This account does not have organiser access.');
         }
 
         $user->update(['last_login_at' => now()]);
@@ -70,6 +75,31 @@ class AuthService implements AuthServiceInterface
             'status' => 'active',
             'is_platform_admin' => false,
         ]);
+    }
+
+    public function sendPasswordResetLink(string $email): string
+    {
+        $user = $this->userRepository->findByEmail($email);
+
+        if ($user === null || $user->status !== 'active' || ! $user->isOrganizer()) {
+            return Password::INVALID_USER;
+        }
+
+        return Password::sendResetLink(['email' => $email]);
+    }
+
+    public function resetPassword(array $data): string
+    {
+        $user = $this->userRepository->findByEmail($data['email']);
+
+        if ($user === null || ! $user->isOrganizer()) {
+            return Password::INVALID_USER;
+        }
+
+        return Password::reset($data, function (User $user, string $password): void {
+            $user->forceFill(['password' => $password])->save();
+            $user->tokens()->delete();
+        });
     }
 
     public function logout(User $user): void
