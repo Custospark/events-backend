@@ -139,6 +139,28 @@ class PesaPalGatewayTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_bypass_mode_is_ignored_outside_local_environments(): void
+    {
+        Http::fake([
+            self::BASE.'/api/Auth/RequestToken' => Http::response(['token' => 'access-token'], 200),
+            self::BASE.'/api/Transactions/SubmitOrderRequest' => Http::response([
+                'order_tracking_id' => 'track-003',
+                'redirect_url' => 'https://pay.pesapal.com/v3/payment/track-003',
+            ], 200),
+        ]);
+
+        $this->app['env'] = 'production';
+        config(['pesapal.bypass' => true]);
+
+        $result = (new PesaPalGateway)->initialize($this->order(), $this->payment());
+
+        $this->assertSame('track-003', $result['provider_reference']);
+        $this->assertSame('https://pay.pesapal.com/v3/payment/track-003', $result['checkout_url']);
+        $this->assertArrayNotHasKey('mode', $result['payload']);
+
+        Http::assertSentCount(2);
+    }
+
     public function test_it_throws_when_pesapal_credentials_are_rejected(): void
     {
         Http::fake([
