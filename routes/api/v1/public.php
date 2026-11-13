@@ -16,6 +16,7 @@ Route::prefix('public')->group(function (): void {
         Route::get('tenants/{tenantSlug}', [PublicController::class, 'tenant']);
         Route::get('tenants/{tenantSlug}/qr', [PublicQrController::class, 'tenant'])->middleware('throttle:public');
         Route::get('tenants/{tenantSlug}/events', [PublicController::class, 'events']);
+        Route::get('tenants/{tenantSlug}/events/{eventSlug}/qr', [PublicQrController::class, 'event'])->middleware('throttle:public');
         Route::get('tenants/{tenantSlug}/events/{eventSlug}', [PublicController::class, 'event']);
         Route::post('tenants/{tenantSlug}/orders', [PublicController::class, 'createOrder'])->middleware('throttle:checkout');
         Route::get('tenants/{tenantSlug}/orders/{reference}', [PublicController::class, 'orderStatus']);

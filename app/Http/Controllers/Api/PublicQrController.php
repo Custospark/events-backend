@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\Contracts\EventServiceInterface;
 use App\Services\Contracts\TenantServiceInterface;
 use App\Services\Contracts\TicketServiceInterface;
 use App\Services\QrCodeService;
@@ -16,6 +17,7 @@ class PublicQrController extends Controller
 {
     public function __construct(
         protected TenantServiceInterface $tenantService,
+        protected EventServiceInterface $eventService,
         protected TicketServiceInterface $ticketService,
         protected QrCodeService $qrCode,
         protected TenantContext $tenantContext,
@@ -32,6 +34,21 @@ class PublicQrController extends Controller
         return response($this->qrCode->svg($this->tenantPublicUrl($tenantSlug)), 200, [
             'Content-Type' => 'image/svg+xml',
             'Content-Disposition' => 'inline; filename="tenant-'.$tenantSlug.'.svg"',
+        ]);
+    }
+
+    public function event(string $tenantSlug, string $eventSlug): Response
+    {
+        $tenant = $this->tenantService->getBySlug($tenantSlug);
+        $event = $this->eventService->getBySlug((int) $tenant->id, $eventSlug);
+
+        if (! $event->isPublished()) {
+            abort(404, 'Event not found.');
+        }
+
+        return response($this->qrCode->svg($this->eventPublicUrl($tenantSlug, $eventSlug), 720, 2), 200, [
+            'Content-Type' => 'image/svg+xml',
+            'Content-Disposition' => 'inline; filename="event-'.$eventSlug.'.svg"',
         ]);
     }
 
@@ -93,6 +110,12 @@ class PublicQrController extends Controller
     private function tenantPublicUrl(string $tenantSlug): string
     {
         return rtrim((string) config('app.frontend_url'), '/').'/t/'.$tenantSlug;
+    }
+
+    private function eventPublicUrl(string $tenantSlug, string $eventSlug): string
+    {
+        return rtrim((string) config('app.frontend_url'), '/')
+            .'/events/'.rawurlencode($tenantSlug).'/'.rawurlencode($eventSlug);
     }
 
     private function maskName(string $name): string
