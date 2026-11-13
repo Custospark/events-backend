@@ -14,7 +14,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $platformPassword = env('SEED_PLATFORM_PASSWORD', 'ChangeMe123!');
+        $platformPassword = env('SEED_PLATFORM_PASSWORD', 'Custospark2027!');
 
         User::query()->updateOrCreate(
             ['email' => env('SEED_PLATFORM_EMAIL', 'oscar@custospark.com')],
@@ -40,8 +40,8 @@ class DatabaseSeeder extends Seeder
                 'timezone' => 'Africa/Kampala',
                 'commission_percent' => 5,
                 'admin_name' => 'COCIS Events Administrator',
-                'admin_email' => 'admin@cocis.ac.ug',
-                'admin_password' => env('SEED_TENANT_ADMIN_PASSWORD', 'ChangeMe123!'),
+                'admin_email' => env('SEED_COCIS_ADMIN_EMAIL', 'jimisaac8082@gmail.com'),
+                'admin_password' => env('SEED_TENANT_ADMIN_PASSWORD', 'Cocis2027!'),
             ]);
         }
 
@@ -55,6 +55,25 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call(CocisFinalistsDinnerSeeder::class);
+
+        $gulu = Tenant::query()->where('slug', 'gulu')->first();
+
+        if ($gulu === null) {
+            app(TenantServiceInterface::class)->onboard([
+                'name' => 'Gulu City Events',
+                'slug' => 'gulu',
+                'email' => 'events@guluevents.ug',
+                'domain' => 'gulu.custospark.events',
+                'currency' => 'UGX',
+                'timezone' => 'Africa/Kampala',
+                'commission_percent' => 5,
+                'admin_name' => 'Gulu Events Administrator',
+                'admin_email' => env('SEED_GULU_ADMIN_EMAIL', 'admin@guluevents.ug'),
+                'admin_password' => env('SEED_GULU_ADMIN_PASSWORD', 'Gulu2027!'),
+            ]);
+        }
+
+        $this->call(GuluEventsSeeder::class);
 
         app(TenantContext::class)->clear();
     }
