@@ -3,6 +3,8 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Order;
+use Illuminate\Mail\Transport\ArrayTransport;
+use Illuminate\Support\Facades\Mail;
 use App\Models\Payment;
 use App\Models\Ticket;
 use App\Services\Payment\Contracts\PaymentGatewayInterface;
@@ -152,6 +154,39 @@ class TicketingFlowTest extends TestCase
         $this->postJson('/api/v1/tickets/check-in', ['code' => $ticket->code])
             ->assertStatus(422)
             ->assertJsonPath('message', 'This ticket is not valid for check-in.');
+    }
+
+    public function test_ticket_email_is_sent_once_with_each_ticket_qr(): void
+    {
+        $tenant = $this->makeTenant(['slug' => 'cocis']);
+        $event = $this->makeEvent($tenant);
+        $ticketType = $this->makeTicketType($event);
+
+        $this->fakeGateway();
+
+        $reference = $this->buyTickets($tenant->slug, $event->id, $ticketType->id, 2)
+            ->assertCreated()
+            ->json('data.reference');
+
+        $url = '/api/v1/payments/webhook?'.http_build_query([
+            'OrderTrackingId' => 'TRACK-123',
+            'OrderMerchantReference' => $reference,
+        ]);
+
+        $this->getJson($url)->assertOk();
+        $this->getJson($url)->assertOk();
+
+        $transport = Mail::mailer()->getSymfonyTransport();
+
+        $this->assertInstanceOf(ArrayTransport::class, $transport);
+        $this->assertCount(1, $transport->messages());
+
+        $rawMessage = $transport->messages()->first()->getOriginalMessage()->toString();
+        $order = Order::query()->where('reference', $reference)->firstOrFail();
+
+        $this->assertStringContainsString('Your tickets are ready', $rawMessage);
+        $this->assertStringContainsString($order->tickets()->first()->code, $rawMessage);
+        $this->assertStringContainsString('View and download your tickets', $rawMessage);
     }
 
     public function test_repeated_pesapal_notifications_do_not_duplicate_tickets(): void

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\PaidOrderUnfulfillableException;
+use App\Mail\TicketIssuedEmail;
 use App\Models\Order;
 use App\Repositories\Contracts\EventRepositoryInterface;
 use App\Repositories\Contracts\OrderItemRepositoryInterface;
@@ -14,6 +15,8 @@ use App\Services\Contracts\TicketServiceInterface;
 use App\Services\Payment\Contracts\PaymentGatewayInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
@@ -245,7 +248,9 @@ class OrderService implements OrderServiceInterface
 
     public function markPaid(Order $order, string $providerReference): Order
     {
-        $order = DB::transaction(function () use ($order, $providerReference): Order {
+        $issuedNow = false;
+
+        $order = DB::transaction(function () use ($order, $providerReference, &$issuedNow): Order {
             $locked = Order::query()->lockForUpdate()->find($order->id);
 
             if ($locked === null) {
@@ -278,10 +283,35 @@ class OrderService implements OrderServiceInterface
 
             $this->ticketService->generateForOrder($locked);
 
+            $issuedNow = true;
+
             return $locked;
         });
 
-        return $order->load(['items.ticketType', 'tickets', 'payments']);
+        $order = $order->load(['event.tenant', 'items.ticketType', 'tickets.ticketType', 'payments']);
+
+        if ($issuedNow) {
+            $this->sendTicketEmail($order);
+        }
+
+        return $order;
+    }
+
+    private function sendTicketEmail(Order $order): void
+    {
+        if (blank($order->buyer_email) || $order->tickets->isEmpty()) {
+            return;
+        }
+
+        try {
+            Mail::to($order->buyer_email)->send(new TicketIssuedEmail($order));
+        } catch (Throwable $e) {
+            Log::error('[Order] Ticket email could not be sent', [
+                'order_id' => $order->id,
+                'reference' => $order->reference,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function reserveLatePaymentStock(Order $order): void
