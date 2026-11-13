@@ -52,13 +52,16 @@ class TicketService implements TicketServiceInterface
             throw new RuntimeException('Tickets can only be issued for a paid order.');
         }
 
-        $order->loadMissing('items');
+        $order->loadMissing('items.ticketType');
 
         return DB::transaction(function () use ($order): Collection {
             $tickets = new Collection;
 
             foreach ($order->items as $item) {
-                for ($i = 0; $i < $item->quantity; $i++) {
+                $admits = max(1, (int) ($item->admits ?? $item->ticketType?->admits ?? 1));
+                $ticketsToIssue = (int) $item->quantity * $admits;
+
+                for ($i = 0; $i < $ticketsToIssue; $i++) {
                     $code = $this->uniqueCode();
 
                     $tickets->push($this->ticketRepository->create([

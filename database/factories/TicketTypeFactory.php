@@ -23,6 +23,7 @@ class TicketTypeFactory extends Factory
             'currency' => 'UGX',
             'quantity_total' => 100,
             'quantity_sold' => 0,
+            'admits' => 1,
             'min_per_order' => 1,
             'max_per_order' => 10,
             'status' => 'active',

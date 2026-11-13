@@ -73,7 +73,7 @@ class DatabaseSeeder extends Seeder
                 'status' => 'published',
                 'capacity' => 800,
                 'currency' => 'UGX',
-                'service_fee_percent' => 2,
+                'service_fee_percent' => 5,
                 'published_at' => now(),
             ]);
 

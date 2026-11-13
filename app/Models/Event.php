@@ -18,7 +18,7 @@ class Event extends Model
         'status' => 'draft',
         'currency' => 'UGX',
         'timezone' => 'Africa/Kampala',
-        'service_fee_percent' => 0,
+        'service_fee_percent' => 5,
     ];
 
     protected $fillable = [
@@ -90,8 +90,13 @@ class Event extends Model
         return $this->status === 'published';
     }
 
+    public function hasEnded(): bool
+    {
+        return $this->ends_at !== null && $this->ends_at->isPast();
+    }
+
     public function canSell(): bool
     {
-        return $this->isPublished() && $this->starts_at->isFuture();
+        return $this->isPublished() && ! $this->hasEnded();
     }
 }

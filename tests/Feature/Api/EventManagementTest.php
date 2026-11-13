@@ -54,6 +54,94 @@ class EventManagementTest extends TestCase
         $this->assertNotNull(Event::query()->find($eventId)->published_at);
     }
 
+    public function test_events_default_to_five_percent_and_tenant_admins_cannot_change_it(): void
+    {
+        $tenant = $this->makeTenant(['slug' => 'cocis']);
+        $admin = $this->makeAdmin($tenant);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->postJson('/api/v1/events', [
+            'title' => 'Platform Fee Event',
+            'starts_at' => now()->addDays(10)->toIso8601String(),
+            'service_fee_percent' => 20,
+        ])->assertCreated()
+            ->assertJsonPath('data.service_fee_percent', '5.00');
+
+        $eventId = $response->json('data.id');
+
+        $this->patchJson("/api/v1/events/{$eventId}", [
+            'service_fee_percent' => 9,
+        ])->assertOk()
+            ->assertJsonPath('data.service_fee_percent', '5.00');
+
+        $this->assertDatabaseHas('events', [
+            'id' => $eventId,
+            'service_fee_percent' => 5,
+        ]);
+    }
+
+    public function test_platform_admin_can_change_event_service_fee(): void
+    {
+        $tenant = $this->makeTenant(['slug' => 'cocis']);
+        $event = $this->makeEvent($tenant);
+        $platformAdmin = $this->makeAdmin($tenant, [
+            'tenant_id' => null,
+            'role_id' => null,
+            'is_platform_admin' => true,
+        ]);
+
+        Sanctum::actingAs($platformAdmin);
+
+        $this->withHeader('X-Tenant', $tenant->slug)
+            ->patchJson("/api/v1/events/{$event->id}", [
+                'service_fee_percent' => 7.5,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.service_fee_percent', '7.50');
+
+        $this->assertDatabaseHas('events', [
+            'id' => $event->id,
+            'service_fee_percent' => 7.5,
+        ]);
+    }
+
+    public function test_admin_can_configure_group_ticket_admissions(): void
+    {
+        $tenant = $this->makeTenant(['slug' => 'cocis']);
+        $admin = $this->makeAdmin($tenant);
+        $event = $this->makeEvent($tenant);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->postJson('/api/v1/ticket-types', [
+            'event_id' => $event->id,
+            'name' => 'Couple ticket',
+            'price' => 80000,
+            'currency' => 'UGX',
+            'quantity_total' => 50,
+            'admits' => 2,
+            'min_per_order' => 1,
+            'max_per_order' => 5,
+            'status' => 'active',
+            'sort_order' => 0,
+        ])->assertCreated()
+            ->assertJsonPath('data.admits', 2);
+
+        $ticketTypeId = $response->json('data.id');
+
+        $this->assertDatabaseHas('ticket_types', [
+            'id' => $ticketTypeId,
+            'event_id' => $event->id,
+            'admits' => 2,
+        ]);
+
+        $this->patchJson("/api/v1/ticket-types/{$ticketTypeId}", [
+            'admits' => 3,
+        ])->assertOk()
+            ->assertJsonPath('data.admits', 3);
+    }
+
     public function test_event_slugs_are_unique_per_tenant(): void
     {
         $tenant = $this->makeTenant();

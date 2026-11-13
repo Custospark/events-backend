@@ -15,6 +15,7 @@ class OrderItemResource extends JsonResource
             'order_id' => $this->order_id,
             'ticket_type_id' => $this->ticket_type_id,
             'quantity' => $this->quantity,
+            'admits' => $this->admits,
             'unit_price' => $this->unit_price,
             'service_fee' => $this->service_fee,
             'line_total' => $this->line_total,

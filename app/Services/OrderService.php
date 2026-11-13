@@ -136,6 +136,7 @@ class OrderService implements OrderServiceInterface
                         'order_id' => $order->id,
                         'ticket_type_id' => $ticketType->id,
                         'quantity' => $quantity,
+                        'admits' => max(1, (int) ($ticketType->admits ?? 1)),
                         'unit_price' => $ticketType->price,
                         'service_fee' => $lineFee,
                         'line_total' => $lineTotal,

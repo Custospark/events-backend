@@ -25,6 +25,7 @@ class TicketTypeRequest extends FormRequest
             'price' => [$creating ? 'required' : 'sometimes', 'numeric', 'min:0'],
             'currency' => ['sometimes', 'string', 'size:3'],
             'quantity_total' => [$creating ? 'required' : 'sometimes', 'integer', 'min:1'],
+            'admits' => ['sometimes', 'integer', 'min:1', 'max:50'],
             'min_per_order' => ['sometimes', 'integer', 'min:1'],
             'max_per_order' => ['sometimes', 'integer', 'min:1'],
             'sales_start_at' => ['nullable', 'date'],

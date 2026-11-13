@@ -49,6 +49,7 @@ class EventService implements EventServiceInterface
 
     public function create(int $tenantId, array $data): Event
     {
+        $this->guardServiceFee($data);
         $data['tenant_id'] = $tenantId;
         $data['created_by'] = $data['created_by'] ?? auth()->id();
         $data['slug'] = $this->uniqueSlug($tenantId, $data['slug'] ?? $data['title']);
@@ -63,6 +64,7 @@ class EventService implements EventServiceInterface
     public function update(int $tenantId, int $id, array $data): Event
     {
         $event = $this->getById($tenantId, $id);
+        $this->guardServiceFee($data);
         unset($data['tenant_id'], $data['created_by']);
 
         if (isset($data['slug']) && $data['slug'] !== $event->slug) {
@@ -98,6 +100,13 @@ class EventService implements EventServiceInterface
         $event = $this->getById($tenantId, $id);
 
         return $this->eventRepository->delete($event);
+    }
+
+    private function guardServiceFee(array &$data): void
+    {
+        if (! auth()->user()?->is_platform_admin) {
+            unset($data['service_fee_percent']);
+        }
     }
 
     private function uniqueSlug(int $tenantId, string $value, ?int $ignoreId = null): string

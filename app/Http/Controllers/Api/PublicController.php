@@ -31,7 +31,7 @@ class PublicController extends ApiController
         $filters = [
             'search' => $request->query('search'),
             'city' => $request->query('city'),
-            'upcoming' => $request->boolean('upcoming', true),
+            'upcoming' => $request->boolean('upcoming', false),
         ];
 
         return new EventCollection(
@@ -47,10 +47,14 @@ class PublicController extends ApiController
     public function events(Request $request, string $tenantSlug): EventCollection
     {
         $tenant = $this->tenantService->getBySlug($tenantSlug);
-        $filters = ['status' => 'published', 'search' => $request->query('search')];
+        $filters = [
+            'tenant_id' => (int) $tenant->id,
+            'search' => $request->query('search'),
+            'upcoming' => $request->boolean('upcoming', false),
+        ];
 
         return new EventCollection(
-            $this->eventService->getAll((int) $tenant->id, $filters, $this->perPage($request)),
+            $this->eventService->discover($filters, $this->perPage($request)),
         );
     }
 
@@ -63,7 +67,10 @@ class PublicController extends ApiController
             abort(404, 'Event not found.');
         }
 
-        return new EventResource($event->load(['ticketTypes' => fn ($q) => $q->where('status', 'active')]));
+        return new EventResource($event->load([
+            'tenant',
+            'ticketTypes' => fn ($q) => $q->where('status', 'active'),
+        ]));
     }
 
     public function createOrder(OrderRequest $request, string $tenantSlug): JsonResponse

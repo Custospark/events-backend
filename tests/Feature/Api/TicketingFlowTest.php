@@ -24,9 +24,9 @@ class TicketingFlowTest extends TestCase
         $this->resetTenantContext();
     }
 
-    private function fakeGateway(string $trackingId = 'TRACK-123'): void
+    private function fakeGateway(string $trackingId = 'TRACK-123', ?int $amount = null): void
     {
-        $this->mock(PaymentGatewayInterface::class, function (MockInterface $mock) use ($trackingId): void {
+        $this->mock(PaymentGatewayInterface::class, function (MockInterface $mock) use ($trackingId, $amount): void {
             $mock->shouldReceive('initialize')->andReturn([
                 'provider_reference' => $trackingId,
                 'checkout_url' => 'https://cybqa.pesapal.com/pesapalv3/payment/'.$trackingId,
@@ -38,7 +38,7 @@ class TicketingFlowTest extends TestCase
                 'payload' => [
                     'status_code' => 1,
                     'order_tracking_id' => $trackingId,
-                    'amount' => 102000,
+                    'amount' => $amount ?? 102000,
                     'currency' => 'UGX',
                 ],
             ]);
@@ -101,6 +101,30 @@ class TicketingFlowTest extends TestCase
         $this->assertSame(2, $ticketType->fresh()->quantity_sold);
     }
 
+    public function test_ongoing_event_can_sell_tickets_but_ended_event_cannot(): void
+    {
+        $tenant = $this->makeTenant(['slug' => 'cocis']);
+        $ongoing = $this->makeEvent($tenant, [
+            'starts_at' => now()->subHour(),
+            'ends_at' => now()->addHours(2),
+        ]);
+        $ongoingTicket = $this->makeTicketType($ongoing, ['quantity_total' => 20]);
+        $ended = $this->makeEvent($tenant, [
+            'starts_at' => now()->subDays(10),
+            'ends_at' => now()->subDays(9),
+        ]);
+        $endedTicket = $this->makeTicketType($ended, ['quantity_total' => 20]);
+
+        $this->fakeGateway();
+
+        $this->buyTickets($tenant->slug, $ongoing->id, $ongoingTicket->id, 2)
+            ->assertCreated();
+
+        $this->buyTickets($tenant->slug, $ended->id, $endedTicket->id, 2)
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Tickets are not on sale for this event.');
+    }
+
     public function test_order_is_rejected_when_stock_is_exhausted(): void
     {
         $tenant = $this->makeTenant(['slug' => 'cocis']);
@@ -154,6 +178,37 @@ class TicketingFlowTest extends TestCase
         $this->postJson('/api/v1/tickets/check-in', ['code' => $ticket->code])
             ->assertStatus(422)
             ->assertJsonPath('message', 'This ticket is not valid for check-in.');
+    }
+
+    public function test_group_ticket_admits_issue_one_ticket_per_person(): void
+    {
+        $tenant = $this->makeTenant(['slug' => 'cocis']);
+        $event = $this->makeEvent($tenant);
+        $ticketType = $this->makeTicketType($event, ['admits' => 2]);
+
+        $this->fakeGateway('TRACK-GROUP', 51000);
+
+        $response = $this->buyTickets($tenant->slug, $event->id, $ticketType->id, 1)
+            ->assertCreated()
+            ->assertJsonPath('data.total', '51000.00');
+
+        $reference = $response->json('data.reference');
+        $order = Order::query()->where('reference', $reference)->firstOrFail();
+
+        $this->assertSame(2, $order->items()->firstOrFail()->admits);
+
+        $this->getJson('/api/v1/payments/webhook?'.http_build_query([
+            'OrderTrackingId' => 'TRACK-GROUP',
+            'OrderMerchantReference' => $reference,
+        ]))->assertOk();
+
+        $order = $order->fresh();
+
+        $this->assertSame(2, $order->tickets()->count());
+        $this->assertCount(2, $order->tickets()->pluck('code')->unique());
+        $this->assertCount(2, $order->tickets()->pluck('qr_payload')->unique());
+        $this->assertSame(1, $ticketType->fresh()->quantity_sold);
+        $this->assertSame('paid', $order->status);
     }
 
     public function test_ticket_email_is_sent_once_with_each_ticket_qr(): void

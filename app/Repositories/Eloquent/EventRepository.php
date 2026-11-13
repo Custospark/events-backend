@@ -21,6 +21,8 @@ class EventRepository implements EventRepositoryInterface
 
     public function discover(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
+        $now = now();
+
         return Event::query()
             ->with([
                 'tenant',
@@ -28,6 +30,7 @@ class EventRepository implements EventRepositoryInterface
             ])
             ->whereHas('tenant', fn ($q) => $q->where('status', 'active'))
             ->where('status', 'published')
+            ->when($filters['tenant_id'] ?? null, fn ($q, $tenantId) => $q->where('tenant_id', $tenantId))
             ->when($filters['search'] ?? null, function ($q, $search): void {
                 $q->where(function ($query) use ($search): void {
                     $query->where('title', 'like', "%{$search}%")
@@ -36,8 +39,24 @@ class EventRepository implements EventRepositoryInterface
                 });
             })
             ->when($filters['city'] ?? null, fn ($q, $city) => $q->where('city', $city))
-            ->when($filters['upcoming'] ?? true, fn ($q) => $q->where('starts_at', '>=', now()))
-            ->orderBy('starts_at')
+            ->when($filters['upcoming'] ?? false, fn ($q) => $q->where('starts_at', '>=', $now))
+            ->orderByRaw(
+                'CASE
+                    WHEN starts_at <= ? AND (ends_at IS NULL OR ends_at >= ?) THEN 0
+                    WHEN starts_at > ? THEN 1
+                    ELSE 2
+                END',
+                [$now, $now, $now],
+            )
+            ->orderByRaw(
+                'CASE
+                    WHEN starts_at <= ? AND (ends_at IS NULL OR ends_at >= ?) THEN ends_at
+                    WHEN starts_at > ? THEN starts_at
+                    ELSE NULL
+                END ASC',
+                [$now, $now, $now],
+            )
+            ->orderByDesc('starts_at')
             ->paginate($perPage);
     }
 

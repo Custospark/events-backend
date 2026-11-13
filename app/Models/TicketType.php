@@ -17,6 +17,7 @@ class TicketType extends Model
     protected $attributes = [
         'status' => 'active',
         'quantity_sold' => 0,
+        'admits' => 1,
         'min_per_order' => 1,
         'max_per_order' => 10,
         'sort_order' => 0,
@@ -31,6 +32,7 @@ class TicketType extends Model
         'currency',
         'quantity_total',
         'quantity_sold',
+        'admits',
         'min_per_order',
         'max_per_order',
         'sales_start_at',
@@ -45,6 +47,7 @@ class TicketType extends Model
             'price' => 'decimal:2',
             'quantity_total' => 'integer',
             'quantity_sold' => 'integer',
+            'admits' => 'integer',
             'min_per_order' => 'integer',
             'max_per_order' => 'integer',
             'sales_start_at' => 'datetime',

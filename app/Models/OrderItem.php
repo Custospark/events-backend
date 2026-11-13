@@ -17,6 +17,7 @@ class OrderItem extends Model
         'order_id',
         'ticket_type_id',
         'quantity',
+        'admits',
         'unit_price',
         'service_fee',
         'line_total',
@@ -26,6 +27,7 @@ class OrderItem extends Model
     {
         return [
             'quantity' => 'integer',
+            'admits' => 'integer',
             'unit_price' => 'decimal:2',
             'service_fee' => 'decimal:2',
             'line_total' => 'decimal:2',

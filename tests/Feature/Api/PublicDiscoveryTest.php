@@ -61,15 +61,29 @@ class PublicDiscoveryTest extends TestCase
             ->assertJsonPath('data.0.title', 'Entebbe Business Forum');
     }
 
-    public function test_landing_hides_events_that_already_started_by_default(): void
+    public function test_landing_prioritises_ongoing_then_upcoming_then_past_events(): void
     {
         $tenant = $this->makeTenant(['slug' => 'cocis']);
-        $this->makeEvent($tenant, [
-            'title' => 'Future Expo',
-            'slug' => 'future-expo',
-            'starts_at' => now()->addDays(5),
+
+        $ongoing = $this->makeEvent($tenant, [
+            'title' => 'Ongoing Expo',
+            'slug' => 'ongoing-expo',
+            'starts_at' => now()->subHour(),
+            'ends_at' => now()->addHours(2),
         ]);
-        $this->makeEvent($tenant, [
+        $upcomingSoon = $this->makeEvent($tenant, [
+            'title' => 'Upcoming Soon Expo',
+            'slug' => 'upcoming-soon-expo',
+            'starts_at' => now()->addDay(),
+            'ends_at' => now()->addDay()->addHours(4),
+        ]);
+        $upcomingLater = $this->makeEvent($tenant, [
+            'title' => 'Upcoming Later Expo',
+            'slug' => 'upcoming-later-expo',
+            'starts_at' => now()->addDays(5),
+            'ends_at' => now()->addDays(5)->addHours(4),
+        ]);
+        $past = $this->makeEvent($tenant, [
             'title' => 'Past Expo',
             'slug' => 'past-expo',
             'starts_at' => now()->subDays(5),
@@ -78,12 +92,61 @@ class PublicDiscoveryTest extends TestCase
 
         $this->getJson('/api/v1/public/events')
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.title', 'Future Expo');
+            ->assertJsonCount(4, 'data')
+            ->assertJsonPath('data.0.id', $ongoing->id)
+            ->assertJsonPath('data.1.id', $upcomingSoon->id)
+            ->assertJsonPath('data.2.id', $upcomingLater->id)
+            ->assertJsonPath('data.3.id', $past->id);
 
-        $this->getJson('/api/v1/public/events?upcoming=0')
+        $this->getJson('/api/v1/public/events?upcoming=1')
             ->assertOk()
-            ->assertJsonCount(2, 'data');
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.id', $upcomingSoon->id)
+            ->assertJsonPath('data.1.id', $upcomingLater->id);
+    }
+
+    public function test_public_tenant_page_lists_all_its_published_events_by_status(): void
+    {
+        $tenant = $this->makeTenant(['slug' => 'cocis']);
+        $other = $this->makeTenant(['slug' => 'other']);
+
+        $ongoing = $this->makeEvent($tenant, [
+            'title' => 'Public Tenant Expo',
+            'slug' => 'public-tenant-expo',
+            'starts_at' => now()->subHour(),
+            'ends_at' => now()->addHours(2),
+        ]);
+        $this->makeTicketType($ongoing, ['name' => 'General', 'admits' => 2]);
+
+        $past = $this->makeEvent($tenant, [
+            'title' => 'Past Tenant Expo',
+            'slug' => 'past-tenant-expo',
+            'starts_at' => now()->subDays(10),
+            'ends_at' => now()->subDays(9),
+        ]);
+
+        $this->makeEvent($tenant, [
+            'title' => 'Hidden Draft',
+            'slug' => 'hidden-draft',
+            'status' => 'draft',
+        ]);
+        $this->makeEvent($other, [
+            'title' => 'Other Tenant Expo',
+            'slug' => 'other-tenant-expo',
+        ]);
+
+        $this->getJson('/api/v1/public/tenants/cocis')
+            ->assertOk()
+            ->assertJsonPath('data.slug', 'cocis')
+            ->assertJsonPath('data.name', $tenant->name);
+
+        $this->getJson('/api/v1/public/tenants/cocis/events')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.id', $ongoing->id)
+            ->assertJsonPath('data.1.id', $past->id)
+            ->assertJsonPath('data.0.tenant.slug', 'cocis')
+            ->assertJsonPath('data.0.ticket_types.0.admits', 2);
     }
 
     public function test_discovery_ignores_any_stale_tenant_context(): void

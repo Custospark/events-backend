@@ -19,6 +19,7 @@ class TicketTypeResource extends JsonResource
             'currency' => $this->currency,
             'quantity_total' => $this->quantity_total,
             'quantity_sold' => $this->quantity_sold,
+            'admits' => $this->admits,
             'remaining' => $this->remaining(),
             'min_per_order' => $this->min_per_order,
             'max_per_order' => $this->max_per_order,
