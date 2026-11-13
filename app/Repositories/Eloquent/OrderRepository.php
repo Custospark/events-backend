@@ -12,6 +12,7 @@ class OrderRepository implements OrderRepositoryInterface
     public function all(int $tenantId, array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return Order::query()
+            ->with('event')
             ->where('tenant_id', $tenantId)
             ->when($filters['search'] ?? null, fn ($q, $search) => $q->where('reference', 'like', "%{$search}%"))
             ->when($filters['event_id'] ?? null, fn ($q, $eventId) => $q->where('event_id', $eventId))
