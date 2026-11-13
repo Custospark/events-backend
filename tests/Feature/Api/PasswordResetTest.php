@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Mail\StandardEmail;
 use App\Models\Role;
 use App\Models\User;
 use App\Notifications\ResetPasswordNotification;
@@ -36,6 +37,24 @@ class PasswordResetTest extends TestCase
             ->assertJsonPath('message', 'If that email address is associated with an organiser account, a password reset link has been sent.');
 
         Notification::assertSentTo($admin, ResetPasswordNotification::class);
+    }
+
+    public function test_reset_notification_contains_the_frontend_reset_link(): void
+    {
+        $tenant = $this->makeTenant();
+        $admin = $this->makeAdmin($tenant);
+
+        $mail = (new ResetPasswordNotification('test-token'))->toMail($admin);
+
+        $this->assertInstanceOf(StandardEmail::class, $mail);
+        $this->assertStringContainsString(
+            '/reset-password?token=test-token&email=',
+            (string) $mail->ctaUrl,
+        );
+
+        $html = $mail->render();
+        $this->assertStringContainsString('Custospark Events', $html);
+        $this->assertStringContainsString('Discover. Reserve. Attend.', $html);
     }
 
     public function test_forgot_password_does_not_reveal_unknown_accounts(): void
