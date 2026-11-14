@@ -37,12 +37,15 @@ php artisan optimize:clear && php artisan config:cache && php artisan view:cache
 
 ## 1. Current production state (2026-11-14, evening)
 
-- Backend repo deployed at commit `33a880d` (`main`): adds the payout request
-  workflow with payment evidence uploads (`ef6722b`), suspension of tenants with
-  a full explainable trail and a suspension email to tenant admins (`d2c444e`),
-  and the `33a880d` production web build carrying frontend sources `242167e`
-  and `9036489` (payout pages, evidence display, suspended-workspace notices
-  and suspension history on the platform tenant page).
+- Backend repo deployed at commit `ad84e53` (`main`), version `5.4.13`.
+  Adds the platform console team and role management with scoped permissions
+  (`9f80ae4`), the frontend release `5.4.13` with the redesigned brand loader
+  (`663c840`) and the scoped-access UI (`c05a9fe`).
+- Version policy: the frontend `package.json` version is the single source of
+  truth (Vite stamps `__APP_VERSION__` at build time). Bump it with
+  `npm version patch|minor|major` in the frontend repo. Set the same value as
+  `APP_VERSION` in the backend `.env` / `.env.production`. `/api/v1/health`
+  reports it. `CHANGELOG.md` records user-facing changes.
 - Event admins and platform admins can edit the fee bearer; existing orders
   keep the fee bearer recorded at transaction time.
 - Tenant settings can update the workspace currency; frontend Redux syncs the
@@ -54,6 +57,8 @@ php artisan optimize:clear && php artisan config:cache && php artisan view:cache
   `/home/u214605677/domains/backups/events-20261114-102637.sql.gz`.
 - Backup created before the payout and suspension migrations:
   `/home/u214605677/domains/backups/events-20261114-144115.sql.gz`.
+- Backup created before the platform roles seed migration (2026_11_14_060000):
+  `/home/u214605677/domains/backups/events-20261114-155654.sql.gz`.
 - Payout workflow migrations (010000, 030000, 040000, 050000) applied to the
   production database on 2026-11-14; `public/storage` symlink resolved.
 - Production `.env` carries `EVENTS_GATEWAY_FEE_PERCENT=3.5`,
@@ -63,7 +68,10 @@ php artisan optimize:clear && php artisan config:cache && php artisan view:cache
   and `processing_fee_bearer`; fee breakdown stays internal.
 - Gateway descriptions include `PFB:CUSTOMER` or `PFB:ORGANIZER`.
 - Frontend build deployed from this workspace; live assets include
-  `assets/index-B0mYiica.js` and `assets/index-EEIoQbNs.css`.
+  `assets/index-BLaGBTc-.js` and `assets/index-DHZ8RNhY.css`.
+- Platform roles seeded in production (`owner`, `manager`, `finance`, `viewer`,
+  tenant_id null). The platform admin `oscar@custospark.com` has no role and is
+  therefore a full-access owner.
 - Production DB `u214605677_events` remains seeded with the original
   two tenants, three users, three events and six ticket types.
 - Tenant `cocis`: `College of Computing and Information Science`.
