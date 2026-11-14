@@ -35,11 +35,24 @@ php artisan optimize:clear && php artisan config:cache && php artisan view:cache
 
 **Do not delete server files.** Preserve placeholder folders and old builds.
 
-## 1. Current production state (2026-11-13)
+## 1. Current production state (2026-11-14)
 
-- Backend repo cloned at `/home/u214605677/domains/events-api.custospark.com`.
-- Production DB `u214605677_events` was reset with `migrate:fresh --seed`:
-  `2` tenants, `3` users, `3` events, `6` ticket types.
+- Backend repo deployed at commit `4ab8c7c` (`main`): source commit `cd9674c`
+  plus the production web build.
+- Production DB `u214605677_events` contains the processing-fee migration.
+  Existing seeded events were preserved; no production data was reset.
+- Backup created before migration:
+  `/home/u214605677/domains/backups/events-20261114-102637.sql.gz`.
+- Production `.env` carries `EVENTS_GATEWAY_FEE_PERCENT=3.5`,
+  `EVENTS_CUSTOSPARK_FEE_PERCENT=1.5` and
+  `EVENTS_DEFAULT_FEE_BEARER=customer`.
+- The public event API exposes only the combined `processing_fee_percent`
+  and `processing_fee_bearer`; fee breakdown stays internal.
+- Gateway descriptions include `PFB:CUSTOMER` or `PFB:ORGANIZER`.
+- Frontend build deployed from this workspace; live assets include
+  `assets/index-jG05ymSz.js` and `assets/index-DGKQ9-_5.css`.
+- Production DB `u214605677_events` remains seeded with the original
+  two tenants, three users, three events and six ticket types.
 - Tenant `cocis`: `College of Computing and Information Science`.
 - Tenant `gulu`: `Gulu City Events`.
 - COCIS event: `CoCIS Class of 2027 Finalists' Dinner`, 20 March 2027,
