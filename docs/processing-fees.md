@@ -15,7 +15,7 @@ The fee split is internal. Public and customer-facing UI must only show **Proces
 
 ## Fee bearer types
 
-Every event has a `processing_fee_bearer` value. Only a platform admin can set it for a client's event. Tenant organisers cannot change it; if they send a value, the backend ignores it and keeps the existing value, or uses the platform default when creating an event.
+Every event has a `processing_fee_bearer` value. Event admins and platform admins can change it for the event. The event admin's change applies to future orders only; existing orders keep the fee bearer recorded when the transaction was created.
 
 | Value | UI label | Who pays the processing fee | Buyer total | Organiser payout |
 | --- | --- | --- | --- | --- |
@@ -50,7 +50,7 @@ Example on a UGX 100,000 subtotal:
 
 ### Event
 
-- `processing_fee_bearer`: `customer` or `organizer`.
+- `processing_fee_bearer`: `customer` or `organizer`. Editing it changes future orders only.
 
 ### Order
 
@@ -153,8 +153,9 @@ The event API remains authoritative: events return `processing_fee_bearer` and t
 - Customer and buyer screens show one line: **Processing fee**.
 - When the organiser absorbs the fee, buyer screens show **Covered by organiser** instead of an amount.
 - Admin order screens show one **Processing fee** value.
-- The fee-bearer selector is visible only to platform admins.
-- Tenant organisers cannot see or change the fee bearer.
+- Event admins and platform admins can change the fee bearer.
+- The fee bearer is a per-event setting and affects future orders only.
+- Existing orders retain the fee bearer recorded at transaction time.
 - The reconciliation code is visible only on internal payment screens.
 - Public order and ticket screens return the reconciliation fields as `null`.
 - Never show gateway or Custospark fee percentages on any UI.

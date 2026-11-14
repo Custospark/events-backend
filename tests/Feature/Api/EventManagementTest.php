@@ -54,7 +54,7 @@ class EventManagementTest extends TestCase
         $this->assertNotNull(Event::query()->find($eventId)->published_at);
     }
 
-    public function test_tenant_admin_events_default_to_customer_paid_processing_fee(): void
+    public function test_tenant_admin_can_choose_who_pays_the_processing_fee(): void
     {
         $tenant = $this->makeTenant(['slug' => 'cocis']);
         $admin = $this->makeAdmin($tenant);
@@ -66,13 +66,13 @@ class EventManagementTest extends TestCase
             'starts_at' => now()->addDays(10)->toIso8601String(),
             'processing_fee_bearer' => 'organizer',
         ])->assertCreated()
-            ->assertJsonPath('data.processing_fee_bearer', 'customer')
+            ->assertJsonPath('data.processing_fee_bearer', 'organizer')
             ->assertJsonPath('data.processing_fee_percent', '5.00');
 
         $eventId = $response->json('data.id');
 
         $this->patchJson("/api/v1/events/{$eventId}", [
-            'processing_fee_bearer' => 'organizer',
+            'processing_fee_bearer' => 'customer',
         ])->assertOk()
             ->assertJsonPath('data.processing_fee_bearer', 'customer');
 

@@ -53,11 +53,9 @@ class EventService implements EventServiceInterface
         $data['tenant_id'] = $tenantId;
         $data['created_by'] = $data['created_by'] ?? auth()->id();
         $data['slug'] = $this->uniqueSlug($tenantId, $data['slug'] ?? $data['title']);
-        $data['processing_fee_bearer'] = auth()->user()?->is_platform_admin
-            ? EventFeeCalculator::normalizeBearer(
-                $data['processing_fee_bearer'] ?? EventFeeCalculator::defaultBearer(),
-            )
-            : EventFeeCalculator::defaultBearer();
+        $data['processing_fee_bearer'] = EventFeeCalculator::normalizeBearer(
+            $data['processing_fee_bearer'] ?? EventFeeCalculator::defaultBearer(),
+        );
 
         if (($data['status'] ?? null) === 'published' && empty($data['published_at'])) {
             $data['published_at'] = now();
@@ -72,13 +70,9 @@ class EventService implements EventServiceInterface
         unset($data['tenant_id'], $data['created_by']);
 
         if (isset($data['processing_fee_bearer'])) {
-            if (auth()->user()?->is_platform_admin) {
-                $data['processing_fee_bearer'] = EventFeeCalculator::normalizeBearer(
-                    $data['processing_fee_bearer'],
-                );
-            } else {
-                unset($data['processing_fee_bearer']);
-            }
+            $data['processing_fee_bearer'] = EventFeeCalculator::normalizeBearer(
+                $data['processing_fee_bearer'],
+            );
         }
 
         if (isset($data['slug']) && $data['slug'] !== $event->slug) {
