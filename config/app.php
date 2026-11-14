@@ -54,7 +54,7 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
-    'version' => env('APP_VERSION', '0.1.0'),
+    'version' => env('APP_VERSION', '5.4.13'),
 
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
 
