@@ -15,7 +15,7 @@ Route::middleware(['throttle:api', 'auth:sanctum', 'tenant.resolve', 'tenant.acc
     Route::get('payouts/{payout}/attachments/{attachment}/download', [PayoutController::class, 'downloadAttachment']);
 });
 
-Route::middleware(['throttle:api', 'auth:sanctum', 'platform'])->group(function (): void {
+Route::middleware(['throttle:api', 'auth:sanctum', 'platform', 'permission:platform.payouts'])->group(function (): void {
     Route::get('platform/payouts', [PayoutWorkflowController::class, 'overview']);
     Route::post('platform/payouts/{payout}/start-processing', [PayoutWorkflowController::class, 'startProcessing']);
     Route::post('platform/payouts/{payout}/mark-paid', [PayoutWorkflowController::class, 'markPaid']);

@@ -25,5 +25,6 @@ Route::prefix('v1')->group(function (): void {
     require __DIR__.'/api/v1/payments.php';
     require __DIR__.'/api/v1/payouts.php';
     require __DIR__.'/api/v1/dashboard.php';
+    require __DIR__.'/api/v1/platform.php';
     require __DIR__.'/api/v1/public.php';
 });

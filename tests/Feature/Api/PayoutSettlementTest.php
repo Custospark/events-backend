@@ -4,7 +4,6 @@ namespace Tests\Feature\Api;
 
 use App\Mail\StandardEmail;
 use App\Models\Order;
-use App\Models\Payout;
 use App\Services\Contracts\PayoutServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;

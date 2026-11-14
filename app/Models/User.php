@@ -84,11 +84,11 @@ class User extends Authenticatable
 
     public function hasPermission(string $permission): bool
     {
-        if ($this->is_platform_admin) {
+        $role = $this->role;
+
+        if ($this->is_platform_admin && $role === null) {
             return true;
         }
-
-        $role = $this->role;
 
         if ($role === null) {
             return false;

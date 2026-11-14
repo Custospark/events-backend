@@ -28,6 +28,60 @@ final class Permissions
 
     public const SETTINGS_MANAGE = 'settings.manage';
 
+    public const PLATFORM_OVERVIEW = 'platform.overview';
+
+    public const PLATFORM_TENANTS = 'platform.tenants';
+
+    public const PLATFORM_PAYOUTS = 'platform.payouts';
+
+    public const PLATFORM_USERS = 'platform.users';
+
+    /**
+     * @return list<string>
+     */
+    public static function platformPermissions(): array
+    {
+        return [
+            self::PLATFORM_OVERVIEW,
+            self::PLATFORM_TENANTS,
+            self::PLATFORM_PAYOUTS,
+            self::PLATFORM_USERS,
+        ];
+    }
+
+    /**
+     * @return array<string, array{name: string, description: string, permissions: list<string>, is_system: bool}>
+     */
+    public static function platformDefaultRoles(): array
+    {
+        return [
+            'owner' => [
+                'name' => 'Platform Owner',
+                'description' => 'Full access to every platform console area.',
+                'permissions' => self::platformPermissions(),
+                'is_system' => true,
+            ],
+            'manager' => [
+                'name' => 'Platform Manager',
+                'description' => 'Manage organisers, payouts and see the platform overview. Cannot manage the platform team.',
+                'permissions' => [self::PLATFORM_OVERVIEW, self::PLATFORM_TENANTS, self::PLATFORM_PAYOUTS],
+                'is_system' => true,
+            ],
+            'finance' => [
+                'name' => 'Platform Finance',
+                'description' => 'Review and disburse payouts, see the platform overview.',
+                'permissions' => [self::PLATFORM_OVERVIEW, self::PLATFORM_PAYOUTS],
+                'is_system' => true,
+            ],
+            'viewer' => [
+                'name' => 'Platform Viewer',
+                'description' => 'Read-only access to the platform overview.',
+                'permissions' => [self::PLATFORM_OVERVIEW],
+                'is_system' => true,
+            ],
+        ];
+    }
+
     /**
      * @return array<string, array{name: string, permissions: list<string>}>
      */
