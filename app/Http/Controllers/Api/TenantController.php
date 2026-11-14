@@ -41,7 +41,7 @@ class TenantController extends ApiController
     public function update(TenantRequest $request, int $tenant): TenantResource
     {
         return new TenantResource(
-            $this->tenantService->update($tenant, $request->validated()),
+            $this->tenantService->update($tenant, $request->validated(), $request->user()),
         );
     }
 
@@ -57,7 +57,7 @@ class TenantController extends ApiController
         $validated = $request->validate(['reason' => ['required', 'string', 'max:255']]);
 
         return new TenantResource(
-            $this->tenantService->suspend($tenant, $validated['reason']),
+            $this->tenantService->suspend($tenant, $validated['reason'], $request->user()),
         );
     }
 }

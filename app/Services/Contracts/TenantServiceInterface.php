@@ -3,6 +3,7 @@
 namespace App\Services\Contracts;
 
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface TenantServiceInterface
@@ -15,9 +16,9 @@ interface TenantServiceInterface
 
     public function onboard(array $data): Tenant;
 
-    public function update(int $id, array $data): Tenant;
+    public function update(int $id, array $data, ?User $actor = null): Tenant;
 
     public function delete(int $id): bool;
 
-    public function suspend(int $id, string $reason): Tenant;
+    public function suspend(int $id, string $reason, ?User $actor = null): Tenant;
 }
