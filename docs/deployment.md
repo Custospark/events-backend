@@ -35,10 +35,14 @@ php artisan optimize:clear && php artisan config:cache && php artisan view:cache
 
 **Do not delete server files.** Preserve placeholder folders and old builds.
 
-## 1. Current production state (2026-11-14)
+## 1. Current production state (2026-11-14, evening)
 
-- Backend repo deployed at commit `feef975` (`main`): backend currency source
-  `cbd2a36`, frontend source `e4670b2` and `3b0083d`, plus the production web build.
+- Backend repo deployed at commit `33a880d` (`main`): adds the payout request
+  workflow with payment evidence uploads (`ef6722b`), suspension of tenants with
+  a full explainable trail and a suspension email to tenant admins (`d2c444e`),
+  and the `33a880d` production web build carrying frontend sources `242167e`
+  and `9036489` (payout pages, evidence display, suspended-workspace notices
+  and suspension history on the platform tenant page).
 - Event admins and platform admins can edit the fee bearer; existing orders
   keep the fee bearer recorded at transaction time.
 - Tenant settings can update the workspace currency; frontend Redux syncs the
@@ -48,6 +52,10 @@ php artisan optimize:clear && php artisan config:cache && php artisan view:cache
   Existing seeded events were preserved; no production data was reset.
 - Backup created before migration:
   `/home/u214605677/domains/backups/events-20261114-102637.sql.gz`.
+- Backup created before the payout and suspension migrations:
+  `/home/u214605677/domains/backups/events-20261114-144115.sql.gz`.
+- Payout workflow migrations (010000, 030000, 040000, 050000) applied to the
+  production database on 2026-11-14; `public/storage` symlink resolved.
 - Production `.env` carries `EVENTS_GATEWAY_FEE_PERCENT=3.5`,
   `EVENTS_CUSTOSPARK_FEE_PERCENT=1.5` and
   `EVENTS_DEFAULT_FEE_BEARER=customer`.
@@ -55,7 +63,7 @@ php artisan optimize:clear && php artisan config:cache && php artisan view:cache
   and `processing_fee_bearer`; fee breakdown stays internal.
 - Gateway descriptions include `PFB:CUSTOMER` or `PFB:ORGANIZER`.
 - Frontend build deployed from this workspace; live assets include
-  `assets/index-BBl1u9jq.js` and `assets/index-g1AhMpMS.css`.
+  `assets/index-B0mYiica.js` and `assets/index-EEIoQbNs.css`.
 - Production DB `u214605677_events` remains seeded with the original
   two tenants, three users, three events and six ticket types.
 - Tenant `cocis`: `College of Computing and Information Science`.
