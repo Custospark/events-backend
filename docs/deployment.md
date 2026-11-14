@@ -35,16 +35,21 @@ php artisan optimize:clear && php artisan config:cache && php artisan view:cache
 
 **Do not delete server files.** Preserve placeholder folders and old builds.
 
-## 1. Current production state (2026-11-12)
+## 1. Current production state (2026-11-13)
 
 - Backend repo cloned at `/home/u214605677/domains/events-api.custospark.com`.
-- Production DB `u214605677_events` created, migrated and seeded:
-  `1` tenant, `2` users, `1` event, `3` ticket types.
-- Seeded demo tenant: `cocis` (`College of Computing and Information Science`).
-- Seeded demo event: `COCIS Annual Tech Conference 2026`.
+- Production DB `u214605677_events` was reset with `migrate:fresh --seed`:
+  `2` tenants, `3` users, `3` events, `6` ticket types.
+- Tenant `cocis`: `College of Computing and Information Science`.
+- Tenant `gulu`: `Gulu City Events`.
+- COCIS event: `CoCIS Class of 2027 Finalists' Dinner`, 20 March 2027,
+  Arirang Hotel, single `120,000 UGX`, couple `200,000 UGX`.
+- Gulu events: `Gulu City Marathon 2027` (upcoming) and
+  `Gulu Business Expo 2026` (past).
 - Platform admin: `oscar@custospark.com`.
-- Tenant admin: `admin@cocis.ac.ug`.
-- Generated seed passwords are stored in the gitignored
+- COCIS admin: `jimisaac8082@gmail.com`.
+- Gulu admin: `admin@guluevents.ug`.
+- Seed passwords are stored in the gitignored
   `C:\Dev\events\backend\.env.production`. **Do not print or commit them.**
 - `public/storage` symlink exists and points to `../storage/app/public`.
 - `public_html/events-api` is a symlink to the backend `public/` folder.
@@ -193,14 +198,21 @@ php artisan optimize:clear && php artisan config:cache && php artisan view:cache
 
 ## 7. Seeding (already done; how to redo safely)
 
-The seeder creates the platform admin, the `cocis` demo tenant, one demo event
-and three ticket types. Passwords come from `SEED_PLATFORM_PASSWORD` and
-`SEED_TENANT_ADMIN_PASSWORD` in `Backend/.env.production` (generated values,
-not the insecure defaults).
+`DatabaseSeeder` creates the platform admin, both tenants, their admins, three
+events and their ticket types. Passwords come from these variables in
+`Backend/.env.production`:
+
+- `SEED_PLATFORM_PASSWORD`
+- `SEED_TENANT_ADMIN_PASSWORD` (COCIS admin)
+- `SEED_GULU_ADMIN_PASSWORD` (Gulu admin)
+- Optional emails: `SEED_PLATFORM_EMAIL`, `SEED_COCIS_ADMIN_EMAIL`,
+  `SEED_GULU_ADMIN_EMAIL`
 
 > **Important:** `DatabaseSeeder` calls `env()` directly. With a cached config,
 > `.env` is not loaded, so those calls return `null` and the seeder falls back
-> to `ChangeMe123!`. Always clear the config cache before seeding.
+> to its local defaults. Always clear the config cache before seeding.
+
+Normal reseed, without deleting existing data:
 
 ```bash
 cd /home/u214605677/domains/events-api.custospark.com
@@ -210,15 +222,18 @@ php artisan config:cache
 php artisan view:cache
 ```
 
-If the tenant already exists, the seeder does not update its admin password.
-Reset it explicitly (only if needed):
+Full reset, intentionally destructive:
 
 ```bash
-php artisan tinker --execute='$u=App\Models\User::where("email","admin@cocis.ac.ug")->first(); if ($u) { $u->password=Illuminate\Support\Facades\Hash::make(env("SEED_TENANT_ADMIN_PASSWORD")); $u->save(); }'
+cd /home/u214605677/domains/events-api.custospark.com
+php artisan optimize:clear
+php artisan migrate:fresh --seed --force
+php artisan config:cache
+php artisan view:cache
 ```
 
-Platform admin password is updated by `db:seed` because the seeder uses
-`updateOrCreate`.
+`migrate:fresh` drops every table and deletes all orders, tickets and payments.
+Never run it on production unless a full data reset is explicitly intended.
 
 ## 8. hPanel cron (manual, still pending)
 
