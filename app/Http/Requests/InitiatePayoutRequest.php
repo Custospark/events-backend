@@ -3,8 +3,9 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
-class PayoutRequest extends FormRequest
+class InitiatePayoutRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -17,7 +18,9 @@ class PayoutRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'event_id' => ['required', 'integer', 'exists:events,id'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'priority' => ['required', Rule::in(['low', 'normal', 'high', 'urgent'])],
+            'note' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

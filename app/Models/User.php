@@ -94,10 +94,6 @@ class User extends Authenticatable
             return false;
         }
 
-        if ($role->slug === 'admin') {
-            return true;
-        }
-
         return in_array($permission, $role->permissions ?? [], true);
     }
 }

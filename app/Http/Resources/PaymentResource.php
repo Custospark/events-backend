@@ -10,6 +10,7 @@ class PaymentResource extends JsonResource
     public function toArray(Request $request): array
     {
         $internal = $request->is('api/v1/payments*', 'api/v1/orders*');
+        $isPlatformAdmin = (bool) $request->user()?->is_platform_admin;
 
         return [
             'id' => $this->id,
@@ -22,7 +23,7 @@ class PaymentResource extends JsonResource
             'status' => $this->status,
             'organiser_name' => $this->organiser_name,
             'event_title' => $this->event_title,
-            'transaction_label' => $this->transaction_label,
+            'transaction_label' => $isPlatformAdmin ? $this->transaction_label : null,
             'fee_bearer_code' => $internal ? $this->fee_bearer_code : null,
             'reconciliation_code' => $internal ? $this->reconciliation_code : null,
             'reconciliation' => $internal ? $this->reconciliation : null,

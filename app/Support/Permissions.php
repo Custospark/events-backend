@@ -18,6 +18,10 @@ final class Permissions
 
     public const PAYMENTS_VIEW = 'payments.view';
 
+    public const PAYOUTS_VIEW = 'payouts.view';
+
+    public const PAYOUTS_ACCOUNT_MANAGE = 'payouts.account.manage';
+
     public const PAYOUTS_MANAGE = 'payouts.manage';
 
     public const REPORTS_VIEW = 'reports.view';
@@ -36,7 +40,7 @@ final class Permissions
             self::ORDERS_MANAGE,
             self::TICKETS_CHECKIN,
             self::PAYMENTS_VIEW,
-            self::PAYOUTS_MANAGE,
+            self::PAYOUTS_VIEW,
             self::REPORTS_VIEW,
             self::SETTINGS_MANAGE,
         ];
@@ -53,7 +57,7 @@ final class Permissions
                     self::ORDERS_MANAGE,
                     self::TICKETS_CHECKIN,
                     self::PAYMENTS_VIEW,
-                    self::PAYOUTS_MANAGE,
+                    self::PAYOUTS_VIEW,
                     self::REPORTS_VIEW,
                 ],
             ],

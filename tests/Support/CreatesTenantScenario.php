@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\TicketType;
 use App\Models\User;
+use App\Support\Permissions;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\Hash;
 
@@ -24,11 +25,27 @@ trait CreatesTenantScenario
 
     protected function makeAdmin(Tenant $tenant, array $overrides = []): User
     {
+        $isPlatformAdmin = (bool) ($overrides['is_platform_admin'] ?? false);
+
+        if ($isPlatformAdmin) {
+            return User::query()->create(array_merge([
+                'tenant_id' => null,
+                'role_id' => null,
+                'name' => 'Platform Administrator',
+                'email' => 'platform-admin-'.uniqid().'@events.custospark.com',
+                'password' => Hash::make('password'),
+                'status' => 'active',
+                'is_platform_admin' => true,
+            ], $overrides));
+        }
+
+        $permissions = Permissions::defaultRoles()['admin']['permissions'];
+
         $role = Role::query()->create([
             'tenant_id' => $tenant->id,
             'name' => 'Administrator',
             'slug' => 'admin',
-            'permissions' => [],
+            'permissions' => $permissions,
             'is_system' => true,
         ]);
 

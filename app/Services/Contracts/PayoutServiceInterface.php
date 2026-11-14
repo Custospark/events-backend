@@ -11,5 +11,13 @@ interface PayoutServiceInterface
 
     public function getById(int $tenantId, int $id): Payout;
 
-    public function settle(int $tenantId, int $eventId): Payout;
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getOutstanding(int $tenantId): array;
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function record(int $tenantId, array $data): Payout;
 }
