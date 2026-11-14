@@ -31,7 +31,7 @@ class EventFactory extends Factory
             'status' => 'published',
             'capacity' => 500,
             'currency' => 'UGX',
-            'service_fee_percent' => 5,
+            'processing_fee_bearer' => 'customer',
             'published_at' => now(),
         ];
     }

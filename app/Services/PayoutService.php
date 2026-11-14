@@ -59,28 +59,43 @@ class PayoutService implements PayoutServiceInterface
             throw new RuntimeException('This event already has an active payout.');
         }
 
-        $gross = (float) Order::query()
+        $orders = Order::query()
             ->where('tenant_id', $tenantId)
             ->where('event_id', $eventId)
             ->where('status', 'paid')
-            ->sum('total');
+            ->get(['total', 'processing_fee', 'gateway_fee', 'custospark_fee']);
+
+        $gross = round((float) $orders->sum('total'), 2);
 
         if ($gross <= 0) {
             throw new RuntimeException('There are no paid orders to settle for this event.');
         }
 
-        $commission = round($gross * ((float) $tenant->commission_percent / 100), 2);
+        $gatewayFees = round((float) $orders->sum('gateway_fee'), 2);
+        $custosparkFees = round((float) $orders->sum('custospark_fee'), 2);
+        $processingFees = round((float) $orders->sum('processing_fee'), 2);
+        $retainedFees = round($gatewayFees + $custosparkFees, 2);
+
+        if ($retainedFees <= 0 && $processingFees > 0) {
+            $retainedFees = $processingFees;
+        }
+
+        $retainedFees = min($retainedFees, $gross);
 
         return $this->payoutRepository->create([
             'tenant_id' => $tenantId,
             'event_id' => $eventId,
             'reference' => 'PO-'.now()->format('ymd').'-'.strtoupper(Str::random(8)),
-            'gross_amount' => round($gross, 2),
-            'commission_amount' => $commission,
-            'net_amount' => round($gross - $commission, 2),
+            'gross_amount' => $gross,
+            'commission_amount' => $retainedFees,
+            'net_amount' => round($gross - $retainedFees, 2),
             'currency' => $tenant->currency,
             'status' => 'pending',
-            'metadata' => ['event_title' => $event->title],
+            'metadata' => [
+                'event_title' => $event->title,
+                'organiser_name' => $tenant->name,
+                'processing_fees' => $retainedFees,
+            ],
         ]);
     }
 }

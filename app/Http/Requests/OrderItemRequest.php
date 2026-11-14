@@ -21,7 +21,7 @@ class OrderItemRequest extends FormRequest
             'ticket_type_id' => ['required', 'integer', 'exists:ticket_types,id'],
             'quantity' => ['required', 'integer', 'min:1'],
             'unit_price' => ['required', 'numeric', 'min:0'],
-            'service_fee' => ['sometimes', 'numeric', 'min:0'],
+            'processing_fee' => ['sometimes', 'numeric', 'min:0'],
             'line_total' => ['required', 'numeric', 'min:0'],
         ];
     }

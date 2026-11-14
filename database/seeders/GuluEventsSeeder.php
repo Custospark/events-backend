@@ -93,7 +93,7 @@ class GuluEventsSeeder extends Seeder
                 'timezone' => 'Africa/Kampala',
                 'status' => 'published',
                 'currency' => 'UGX',
-                'service_fee_percent' => 5,
+                'processing_fee_bearer' => 'customer',
             ];
 
             $event = Event::query()

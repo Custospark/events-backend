@@ -50,7 +50,7 @@ class CocisFinalistsDinnerSeeder extends Seeder
             'status' => 'published',
             'capacity' => 750,
             'currency' => 'UGX',
-            'service_fee_percent' => 5,
+            'processing_fee_bearer' => 'customer',
         ];
 
         if ($event === null) {

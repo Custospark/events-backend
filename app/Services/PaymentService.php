@@ -9,6 +9,7 @@ use App\Repositories\Contracts\PaymentRepositoryInterface;
 use App\Services\Contracts\OrderServiceInterface;
 use App\Services\Contracts\PaymentServiceInterface;
 use App\Services\Payment\Contracts\PaymentGatewayInterface;
+use App\Support\PaymentReconciler;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -229,22 +230,29 @@ class PaymentService implements PaymentServiceInterface
     private function applyStatus(Payment $payment, string $status, array $payload, string $reference): Payment
     {
         if (in_array($status, self::SUCCESS_STATUSES, true)) {
-            $mismatch = $this->amountMismatch($payment, $payload);
+            $reconciliation = $this->reconcile($payment, $payload, $status);
+            $blocking = in_array(
+                $reconciliation['code'],
+                ['MISSING_AMOUNT', 'CURRENCY_MISMATCH', 'AMOUNT_MISMATCH'],
+                true,
+            );
 
-            if ($mismatch !== null) {
-                Log::critical('[Payment] Amount or currency mismatch', [
+            if ($blocking) {
+                Log::critical('[Payment] Gateway amount or currency mismatch', [
                     'payment_id' => $payment->id,
                     'order_id' => $payment->order_id,
-                    'expected_amount' => (float) $payment->amount,
-                    'expected_currency' => $payment->currency,
-                    'gateway_payload' => $payload,
-                    'reason' => $mismatch,
+                    'expected_amount' => $reconciliation['expected_amount'],
+                    'gateway_amount' => $reconciliation['gateway_amount'],
+                    'gateway_currency' => $reconciliation['gateway_currency'],
+                    'reason' => $reconciliation['code'],
                 ]);
 
                 return $this->paymentRepository->update($payment, [
                     'status' => 'requires_review',
+                    'reconciliation_code' => $reconciliation['code'],
+                    'reconciliation' => $reconciliation,
                     'payload' => array_merge($payment->payload ?? [], $payload, [
-                        'review_reason' => $mismatch,
+                        'review_reason' => $reconciliation['code'],
                     ]),
                 ]);
             }
@@ -264,6 +272,8 @@ class PaymentService implements PaymentServiceInterface
 
                 return $this->paymentRepository->update($payment, [
                     'status' => 'refund_pending',
+                    'reconciliation_code' => $reconciliation['code'],
+                    'reconciliation' => $reconciliation,
                     'payload' => array_merge($payment->payload ?? [], $payload, [
                         'refund_reason' => $e->getMessage(),
                     ]),
@@ -273,6 +283,8 @@ class PaymentService implements PaymentServiceInterface
             return $this->paymentRepository->update($payment, [
                 'status' => 'succeeded',
                 'paid_at' => $payment->paid_at ?? now(),
+                'reconciliation_code' => $reconciliation['code'],
+                'reconciliation' => $reconciliation,
                 'payload' => array_merge($payment->payload ?? [], $payload),
             ]);
         }
@@ -303,29 +315,15 @@ class PaymentService implements PaymentServiceInterface
         ]);
     }
 
-    private function amountMismatch(Payment $payment, array $payload): ?string
+    /**
+     * @return array<string, mixed>
+     */
+    private function reconcile(Payment $payment, array $payload, string $gatewayStatus): array
     {
-        if (($payload['bypass'] ?? false) === true
-            || ($payload['mode'] ?? null) === 'bypass'
-            || str_starts_with((string) $payment->provider_reference, 'BYPASS-')) {
-            return null;
-        }
+        $order = $payment->relationLoaded('order')
+            ? $payment->order
+            : $payment->order()->first();
 
-        $amount = $payload['amount'] ?? null;
-        $currency = $payload['currency'] ?? null;
-
-        if ($amount === null || $currency === null) {
-            return 'The gateway did not return the paid amount and currency.';
-        }
-
-        if (strtoupper((string) $currency) !== strtoupper((string) $payment->currency)) {
-            return 'Paid currency does not match the order currency.';
-        }
-
-        if (abs((float) $amount - (float) $payment->amount) > 0.01) {
-            return 'Paid amount does not match the order total.';
-        }
-
-        return null;
+        return PaymentReconciler::reconcile($order?->toArray() ?? [], $payload, $gatewayStatus);
     }
 }

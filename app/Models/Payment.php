@@ -24,6 +24,12 @@ class Payment extends Model
         'amount',
         'currency',
         'status',
+        'organiser_name',
+        'event_title',
+        'transaction_label',
+        'fee_bearer_code',
+        'reconciliation_code',
+        'reconciliation',
         'payload',
         'paid_at',
     ];
@@ -33,6 +39,7 @@ class Payment extends Model
         return [
             'amount' => 'decimal:2',
             'payload' => 'array',
+            'reconciliation' => 'array',
             'paid_at' => 'datetime',
         ];
     }

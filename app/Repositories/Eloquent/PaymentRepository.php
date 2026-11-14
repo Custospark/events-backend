@@ -13,7 +13,13 @@ class PaymentRepository implements PaymentRepositoryInterface
     {
         return Payment::query()
             ->where('tenant_id', $tenantId)
-            ->when($filters['search'] ?? null, fn ($q, $search) => $q->where('provider_reference', 'like', "%{$search}%"))
+            ->when($filters['search'] ?? null, fn ($q, $search) => $q->where(
+                fn ($query) => $query
+                    ->where('provider_reference', 'like', "%{$search}%")
+                    ->orWhere('transaction_label', 'like', "%{$search}%")
+                    ->orWhere('organiser_name', 'like', "%{$search}%")
+                    ->orWhere('event_title', 'like', "%{$search}%"),
+            ))
             ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
             ->latest()
             ->paginate($perPage);

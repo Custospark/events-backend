@@ -33,7 +33,7 @@ class EventRequest extends FormRequest
             'banner_path' => ['nullable', 'string', 'max:255'],
             'capacity' => ['nullable', 'integer', 'min:1'],
             'currency' => ['sometimes', 'string', 'size:3'],
-            'service_fee_percent' => ['sometimes', 'numeric', 'min:0', 'max:100'],
+            'processing_fee_bearer' => ['sometimes', 'in:customer,organizer'],
             'metadata' => ['nullable', 'array'],
         ];
     }

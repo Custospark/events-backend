@@ -5,6 +5,7 @@ namespace App\Services\Payment;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\Payment\Contracts\PaymentGatewayInterface;
+use App\Support\EventFeeCalculator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -53,7 +54,8 @@ class PesaPalGateway implements PaymentGatewayInterface
                 'id' => $order->reference,
                 'currency' => strtoupper((string) $order->currency),
                 'amount' => (float) $order->total,
-                'description' => 'Tickets for '.$order->reference,
+                'description' => $payment->transaction_label
+                    ?? EventFeeCalculator::bearerCode($order->processing_fee_bearer).' | '.$order->reference,
                 'callback_url' => (string) config('pesapal.callback_url'),
                 'redirect_mode' => 'TOP_WINDOW',
                 'notification_id' => $ipnId,

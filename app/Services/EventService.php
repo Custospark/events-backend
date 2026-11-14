@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Event;
 use App\Repositories\Contracts\EventRepositoryInterface;
 use App\Services\Contracts\EventServiceInterface;
+use App\Support\EventFeeCalculator;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -49,10 +50,14 @@ class EventService implements EventServiceInterface
 
     public function create(int $tenantId, array $data): Event
     {
-        $this->guardServiceFee($data);
         $data['tenant_id'] = $tenantId;
         $data['created_by'] = $data['created_by'] ?? auth()->id();
         $data['slug'] = $this->uniqueSlug($tenantId, $data['slug'] ?? $data['title']);
+        $data['processing_fee_bearer'] = auth()->user()?->is_platform_admin
+            ? EventFeeCalculator::normalizeBearer(
+                $data['processing_fee_bearer'] ?? EventFeeCalculator::defaultBearer(),
+            )
+            : EventFeeCalculator::defaultBearer();
 
         if (($data['status'] ?? null) === 'published' && empty($data['published_at'])) {
             $data['published_at'] = now();
@@ -64,8 +69,17 @@ class EventService implements EventServiceInterface
     public function update(int $tenantId, int $id, array $data): Event
     {
         $event = $this->getById($tenantId, $id);
-        $this->guardServiceFee($data);
         unset($data['tenant_id'], $data['created_by']);
+
+        if (isset($data['processing_fee_bearer'])) {
+            if (auth()->user()?->is_platform_admin) {
+                $data['processing_fee_bearer'] = EventFeeCalculator::normalizeBearer(
+                    $data['processing_fee_bearer'],
+                );
+            } else {
+                unset($data['processing_fee_bearer']);
+            }
+        }
 
         if (isset($data['slug']) && $data['slug'] !== $event->slug) {
             $data['slug'] = $this->uniqueSlug($tenantId, $data['slug'], $event->id);
@@ -100,13 +114,6 @@ class EventService implements EventServiceInterface
         $event = $this->getById($tenantId, $id);
 
         return $this->eventRepository->delete($event);
-    }
-
-    private function guardServiceFee(array &$data): void
-    {
-        if (! auth()->user()?->is_platform_admin) {
-            unset($data['service_fee_percent']);
-        }
     }
 
     private function uniqueSlug(int $tenantId, string $value, ?int $ignoreId = null): string

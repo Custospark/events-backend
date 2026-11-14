@@ -59,7 +59,7 @@ trait CreatesTenantScenario
             'status' => 'published',
             'capacity' => 300,
             'currency' => 'UGX',
-            'service_fee_percent' => 2,
+            'processing_fee_bearer' => 'customer',
             'published_at' => now(),
         ], $overrides));
     }

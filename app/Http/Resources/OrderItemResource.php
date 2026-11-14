@@ -17,7 +17,7 @@ class OrderItemResource extends JsonResource
             'quantity' => $this->quantity,
             'admits' => $this->admits,
             'unit_price' => $this->unit_price,
-            'service_fee' => $this->service_fee,
+            'processing_fee' => $this->processing_fee,
             'line_total' => $this->line_total,
             'ticket_type' => new TicketTypeResource($this->whenLoaded('ticketType')),
         ];

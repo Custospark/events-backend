@@ -35,7 +35,7 @@ class EventManagementTest extends TestCase
             'ends_at' => now()->addDays(30)->addHours(8)->toIso8601String(),
             'capacity' => 500,
             'currency' => 'UGX',
-            'service_fee_percent' => 2,
+            'processing_fee_bearer' => 'customer',
         ])->assertCreated();
 
         $eventId = $response->json('data.id');
@@ -54,7 +54,7 @@ class EventManagementTest extends TestCase
         $this->assertNotNull(Event::query()->find($eventId)->published_at);
     }
 
-    public function test_events_default_to_five_percent_and_tenant_admins_cannot_change_it(): void
+    public function test_tenant_admin_events_default_to_customer_paid_processing_fee(): void
     {
         $tenant = $this->makeTenant(['slug' => 'cocis']);
         $admin = $this->makeAdmin($tenant);
@@ -62,26 +62,27 @@ class EventManagementTest extends TestCase
         Sanctum::actingAs($admin);
 
         $response = $this->postJson('/api/v1/events', [
-            'title' => 'Platform Fee Event',
+            'title' => 'Processing Fee Event',
             'starts_at' => now()->addDays(10)->toIso8601String(),
-            'service_fee_percent' => 20,
+            'processing_fee_bearer' => 'organizer',
         ])->assertCreated()
-            ->assertJsonPath('data.service_fee_percent', '5.00');
+            ->assertJsonPath('data.processing_fee_bearer', 'customer')
+            ->assertJsonPath('data.processing_fee_percent', '5.00');
 
         $eventId = $response->json('data.id');
 
         $this->patchJson("/api/v1/events/{$eventId}", [
-            'service_fee_percent' => 9,
+            'processing_fee_bearer' => 'organizer',
         ])->assertOk()
-            ->assertJsonPath('data.service_fee_percent', '5.00');
+            ->assertJsonPath('data.processing_fee_bearer', 'customer');
 
         $this->assertDatabaseHas('events', [
             'id' => $eventId,
-            'service_fee_percent' => 5,
+            'processing_fee_bearer' => 'customer',
         ]);
     }
 
-    public function test_platform_admin_can_change_event_service_fee(): void
+    public function test_platform_admin_can_choose_who_pays_the_processing_fee(): void
     {
         $tenant = $this->makeTenant(['slug' => 'cocis']);
         $event = $this->makeEvent($tenant);
@@ -95,14 +96,14 @@ class EventManagementTest extends TestCase
 
         $this->withHeader('X-Tenant', $tenant->slug)
             ->patchJson("/api/v1/events/{$event->id}", [
-                'service_fee_percent' => 7.5,
+                'processing_fee_bearer' => 'organizer',
             ])
             ->assertOk()
-            ->assertJsonPath('data.service_fee_percent', '7.50');
+            ->assertJsonPath('data.processing_fee_bearer', 'organizer');
 
         $this->assertDatabaseHas('events', [
             'id' => $event->id,
-            'service_fee_percent' => 7.5,
+            'processing_fee_bearer' => 'organizer',
         ]);
     }
 

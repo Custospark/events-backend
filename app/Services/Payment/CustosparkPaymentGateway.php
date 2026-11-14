@@ -5,6 +5,7 @@ namespace App\Services\Payment;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\Payment\Contracts\PaymentGatewayInterface;
+use App\Support\EventFeeCalculator;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -36,7 +37,8 @@ class CustosparkPaymentGateway implements PaymentGatewayInterface
                 'amount' => (float) $order->total,
                 'currency' => $order->currency,
                 'reference' => $order->reference,
-                'description' => 'Tickets for order '.$order->reference,
+                'description' => $payment->transaction_label
+                    ?? EventFeeCalculator::bearerCode($order->processing_fee_bearer).' | '.$order->reference,
                 'callback_url' => rtrim((string) env('FRONTEND_URL', 'http://localhost:5173'), '/').'/checkout/'.$order->reference,
                 'metadata' => [
                     'tenant_id' => $order->tenant_id,

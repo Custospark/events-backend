@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\EventFeeCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -9,6 +10,8 @@ class EventResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $fees = EventFeeCalculator::percentages();
+
         return [
             'id' => $this->id,
             'tenant_id' => $this->tenant_id,
@@ -27,7 +30,8 @@ class EventResource extends JsonResource
             'banner_path' => $this->banner_path,
             'capacity' => $this->capacity,
             'currency' => $this->currency,
-            'service_fee_percent' => $this->service_fee_percent,
+            'processing_fee_bearer' => EventFeeCalculator::normalizeBearer($this->processing_fee_bearer),
+            'processing_fee_percent' => number_format($fees['processing_percent'], 2, '.', ''),
             'published_at' => $this->published_at?->toIso8601String(),
             'metadata' => $this->metadata,
             'tenant' => new TenantResource($this->whenLoaded('tenant')),

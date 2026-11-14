@@ -18,7 +18,7 @@ class Event extends Model
         'status' => 'draft',
         'currency' => 'UGX',
         'timezone' => 'Africa/Kampala',
-        'service_fee_percent' => 5,
+        'processing_fee_bearer' => 'customer',
     ];
 
     protected $fillable = [
@@ -38,7 +38,7 @@ class Event extends Model
         'banner_path',
         'capacity',
         'currency',
-        'service_fee_percent',
+        'processing_fee_bearer',
         'published_at',
         'metadata',
     ];
@@ -50,7 +50,6 @@ class Event extends Model
             'ends_at' => 'datetime',
             'published_at' => 'datetime',
             'capacity' => 'integer',
-            'service_fee_percent' => 'decimal:2',
             'metadata' => 'array',
         ];
     }

@@ -17,10 +17,14 @@ class Order extends Model
     protected $attributes = [
         'status' => 'pending',
         'subtotal' => 0,
-        'service_fee' => 0,
+        'processing_fee' => 0,
+        'buyer_processing_fee' => 0,
+        'gateway_fee' => 0,
+        'custospark_fee' => 0,
         'discount' => 0,
         'total' => 0,
         'currency' => 'UGX',
+        'processing_fee_bearer' => 'customer',
     ];
 
     protected $fillable = [
@@ -33,7 +37,13 @@ class Order extends Model
         'buyer_phone',
         'status',
         'subtotal',
-        'service_fee',
+        'processing_fee',
+        'buyer_processing_fee',
+        'processing_fee_bearer',
+        'gateway_fee_percent',
+        'custospark_fee_percent',
+        'gateway_fee',
+        'custospark_fee',
         'discount',
         'total',
         'currency',
@@ -47,7 +57,12 @@ class Order extends Model
     {
         return [
             'subtotal' => 'decimal:2',
-            'service_fee' => 'decimal:2',
+            'processing_fee' => 'decimal:2',
+            'buyer_processing_fee' => 'decimal:2',
+            'gateway_fee_percent' => 'decimal:2',
+            'custospark_fee_percent' => 'decimal:2',
+            'gateway_fee' => 'decimal:2',
+            'custospark_fee' => 'decimal:2',
             'discount' => 'decimal:2',
             'total' => 'decimal:2',
             'expires_at' => 'datetime',

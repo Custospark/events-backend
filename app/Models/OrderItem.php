@@ -19,7 +19,7 @@ class OrderItem extends Model
         'quantity',
         'admits',
         'unit_price',
-        'service_fee',
+        'processing_fee',
         'line_total',
     ];
 
@@ -29,7 +29,7 @@ class OrderItem extends Model
             'quantity' => 'integer',
             'admits' => 'integer',
             'unit_price' => 'decimal:2',
-            'service_fee' => 'decimal:2',
+            'processing_fee' => 'decimal:2',
             'line_total' => 'decimal:2',
         ];
     }

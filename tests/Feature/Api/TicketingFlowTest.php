@@ -3,12 +3,12 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Order;
-use Illuminate\Mail\Transport\ArrayTransport;
-use Illuminate\Support\Facades\Mail;
 use App\Models\Payment;
 use App\Models\Ticket;
 use App\Services\Payment\Contracts\PaymentGatewayInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Mail\Transport\ArrayTransport;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
 use Mockery\MockInterface;
 use Tests\Support\CreatesTenantScenario;
@@ -24,9 +24,23 @@ class TicketingFlowTest extends TestCase
         $this->resetTenantContext();
     }
 
-    private function fakeGateway(string $trackingId = 'TRACK-123', ?int $amount = null): void
-    {
-        $this->mock(PaymentGatewayInterface::class, function (MockInterface $mock) use ($trackingId, $amount): void {
+    private function fakeGateway(
+        string $trackingId = 'TRACK-123',
+        ?int $amount = null,
+        ?float $fee = null,
+    ): void {
+        $this->mock(PaymentGatewayInterface::class, function (MockInterface $mock) use ($trackingId, $amount, $fee): void {
+            $payload = [
+                'status_code' => 1,
+                'order_tracking_id' => $trackingId,
+                'amount' => $amount ?? 105000,
+                'currency' => 'UGX',
+            ];
+
+            if ($fee !== null) {
+                $payload['fee'] = $fee;
+            }
+
             $mock->shouldReceive('initialize')->andReturn([
                 'provider_reference' => $trackingId,
                 'checkout_url' => 'https://cybqa.pesapal.com/pesapalv3/payment/'.$trackingId,
@@ -35,12 +49,7 @@ class TicketingFlowTest extends TestCase
 
             $mock->shouldReceive('verify')->with($trackingId)->andReturn([
                 'status' => 'successful',
-                'payload' => [
-                    'status_code' => 1,
-                    'order_tracking_id' => $trackingId,
-                    'amount' => $amount ?? 102000,
-                    'currency' => 'UGX',
-                ],
+                'payload' => $payload,
             ]);
 
             $mock->shouldReceive('verifyWebhookSignature')->andReturn(true);
@@ -78,7 +87,9 @@ class TicketingFlowTest extends TestCase
         $reference = $response->json('data.reference');
 
         $this->assertStringStartsWith('CSE-', $reference);
-        $this->assertSame('102000.00', $response->json('data.total'));
+        $this->assertSame('105000.00', $response->json('data.total'));
+        $this->assertSame('5000.00', $response->json('data.buyer_processing_fee'));
+        $this->assertSame('5000.00', $response->json('data.processing_fee'));
         $this->assertSame('pending', $response->json('data.status'));
         $this->assertSame(
             'https://cybqa.pesapal.com/pesapalv3/payment/TRACK-123',
@@ -89,6 +100,7 @@ class TicketingFlowTest extends TestCase
             'reference' => $reference,
             'tenant_id' => $tenant->id,
             'status' => 'pending',
+            'processing_fee_bearer' => 'customer',
         ]);
 
         $this->assertDatabaseHas('payments', [
@@ -96,9 +108,96 @@ class TicketingFlowTest extends TestCase
             'provider' => 'pesapal',
             'provider_reference' => 'TRACK-123',
             'status' => 'pending',
+            'organiser_name' => $tenant->name,
+            'event_title' => $event->title,
+            'fee_bearer_code' => 'PFB:CUSTOMER',
+            'transaction_label' => 'PFB:CUSTOMER | '.$tenant->name.' | '.$event->title.' | '.$reference,
         ]);
 
         $this->assertSame(2, $ticketType->fresh()->quantity_sold);
+    }
+
+    public function test_organiser_can_absorb_the_processing_fee(): void
+    {
+        $tenant = $this->makeTenant(['slug' => 'cocis']);
+        $event = $this->makeEvent($tenant, ['processing_fee_bearer' => 'organizer']);
+        $ticketType = $this->makeTicketType($event, ['price' => 50000, 'quantity_total' => 100]);
+
+        $this->fakeGateway('TRACK-ABSORBED', 100000);
+
+        $response = $this->buyTickets($tenant->slug, $event->id, $ticketType->id, 2)
+            ->assertCreated()
+            ->assertJsonPath('data.total', '100000.00')
+            ->assertJsonPath('data.processing_fee', '5000.00')
+            ->assertJsonPath('data.buyer_processing_fee', '0.00')
+            ->assertJsonPath('data.processing_fee_bearer', 'organizer');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $response->json('data.id'),
+            'gateway_fee' => 3500,
+            'custospark_fee' => 1500,
+            'processing_fee' => 5000,
+            'buyer_processing_fee' => 0,
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'order_id' => $response->json('data.id'),
+            'fee_bearer_code' => 'PFB:ORGANIZER',
+        ]);
+    }
+
+    public function test_processing_fee_percentages_are_configurable(): void
+    {
+        config([
+            'events.fees.gateway_percent' => 2.5,
+            'events.fees.custospark_percent' => 1,
+        ]);
+
+        $tenant = $this->makeTenant(['slug' => 'cocis']);
+        $event = $this->makeEvent($tenant);
+        $ticketType = $this->makeTicketType($event, ['price' => 50000, 'quantity_total' => 100]);
+
+        $this->fakeGateway('TRACK-CONFIG', 103500);
+
+        $response = $this->buyTickets($tenant->slug, $event->id, $ticketType->id, 2)
+            ->assertCreated()
+            ->assertJsonPath('data.total', '103500.00')
+            ->assertJsonPath('data.processing_fee', '3500.00')
+            ->assertJsonPath('data.buyer_processing_fee', '3500.00');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $response->json('data.id'),
+            'gateway_fee_percent' => 2.5,
+            'custospark_fee_percent' => 1,
+            'gateway_fee' => 2500,
+            'custospark_fee' => 1000,
+        ]);
+    }
+
+    public function test_gateway_confirmation_is_used_to_reconcile_the_payout(): void
+    {
+        $tenant = $this->makeTenant(['slug' => 'cocis']);
+        $event = $this->makeEvent($tenant, ['processing_fee_bearer' => 'organizer']);
+        $ticketType = $this->makeTicketType($event, ['price' => 50000, 'quantity_total' => 100]);
+
+        $this->fakeGateway('TRACK-RECONCILED', 100000, 3500);
+
+        $reference = $this->buyTickets($tenant->slug, $event->id, $ticketType->id, 2)
+            ->assertCreated()
+            ->json('data.reference');
+
+        $this->getJson('/api/v1/payments/webhook?'.http_build_query([
+            'OrderTrackingId' => 'TRACK-RECONCILED',
+            'OrderMerchantReference' => $reference,
+        ]))->assertOk();
+
+        $payment = Payment::query()->where('provider_reference', 'TRACK-RECONCILED')->firstOrFail();
+
+        $this->assertSame('RECONCILED', $payment->reconciliation_code);
+        $this->assertSame('PFB:ORGANIZER', $payment->reconciliation['fee_bearer_code']);
+        $this->assertEquals(3500.0, $payment->reconciliation['gateway_fee']);
+        $this->assertEquals(95000.0, $payment->reconciliation['organiser_payout']);
+        $this->assertEquals(1500.0, $payment->reconciliation['custospark_revenue']);
     }
 
     public function test_ongoing_event_can_sell_tickets_but_ended_event_cannot(): void
@@ -186,11 +285,11 @@ class TicketingFlowTest extends TestCase
         $event = $this->makeEvent($tenant);
         $ticketType = $this->makeTicketType($event, ['admits' => 2]);
 
-        $this->fakeGateway('TRACK-GROUP', 51000);
+        $this->fakeGateway('TRACK-GROUP', 52500);
 
         $response = $this->buyTickets($tenant->slug, $event->id, $ticketType->id, 1)
             ->assertCreated()
-            ->assertJsonPath('data.total', '51000.00');
+            ->assertJsonPath('data.total', '52500.00');
 
         $reference = $response->json('data.reference');
         $order = Order::query()->where('reference', $reference)->firstOrFail();
@@ -387,7 +486,9 @@ class TicketingFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.reference', $reference)
             ->assertJsonPath('data.status', 'pending')
-            ->assertJsonPath('data.event.tenant.slug', 'cocis');
+            ->assertJsonPath('data.event.tenant.slug', 'cocis')
+            ->assertJsonPath('data.payments.0.fee_bearer_code', null)
+            ->assertJsonPath('data.payments.0.reconciliation_code', null);
 
         $this->getJson('/api/v1/payments/webhook?'.http_build_query([
             'OrderTrackingId' => 'TRACK-123',

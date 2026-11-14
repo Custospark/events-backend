@@ -13,6 +13,7 @@ use App\Repositories\Contracts\TicketTypeRepositoryInterface;
 use App\Services\Contracts\OrderServiceInterface;
 use App\Services\Contracts\TicketServiceInterface;
 use App\Services\Payment\Contracts\PaymentGatewayInterface;
+use App\Support\EventFeeCalculator;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -83,6 +84,8 @@ class OrderService implements OrderServiceInterface
             throw new RuntimeException('Tickets are not on sale for this event.');
         }
 
+        $event->loadMissing('tenant');
+
         if (empty($data['items'])) {
             throw new RuntimeException('Select at least one ticket.');
         }
@@ -103,7 +106,6 @@ class OrderService implements OrderServiceInterface
                 ]);
 
                 $subtotal = 0.0;
-                $serviceFee = 0.0;
 
                 foreach ($data['items'] as $row) {
                     $ticketType = $this->ticketTypeRepository->lockForUpdate($tenantId, (int) $row['ticket_type_id']);
@@ -129,7 +131,10 @@ class OrderService implements OrderServiceInterface
                     }
 
                     $lineTotal = round((float) $ticketType->price * $quantity, 2);
-                    $lineFee = round($lineTotal * ((float) $event->service_fee_percent / 100), 2);
+                    $lineFees = EventFeeCalculator::breakdown(
+                        $lineTotal,
+                        $event->processing_fee_bearer,
+                    );
 
                     $this->orderItemRepository->create([
                         'tenant_id' => $tenantId,
@@ -138,21 +143,39 @@ class OrderService implements OrderServiceInterface
                         'quantity' => $quantity,
                         'admits' => max(1, (int) ($ticketType->admits ?? 1)),
                         'unit_price' => $ticketType->price,
-                        'service_fee' => $lineFee,
+                        'processing_fee' => $lineFees['buyer_processing_fee'],
                         'line_total' => $lineTotal,
                     ]);
 
                     $ticketType->increment('quantity_sold', $quantity);
 
                     $subtotal += $lineTotal;
-                    $serviceFee += $lineFee;
                 }
+
+                $fees = EventFeeCalculator::breakdown(
+                    round($subtotal, 2),
+                    $event->processing_fee_bearer,
+                );
 
                 $order = $this->orderRepository->update($order, [
                     'subtotal' => round($subtotal, 2),
-                    'service_fee' => round($serviceFee, 2),
-                    'total' => round($subtotal + $serviceFee, 2),
+                    'processing_fee' => $fees['processing_fee'],
+                    'buyer_processing_fee' => $fees['buyer_processing_fee'],
+                    'processing_fee_bearer' => $fees['processing_fee_bearer'],
+                    'gateway_fee_percent' => $fees['gateway_percent'],
+                    'custospark_fee_percent' => $fees['custospark_percent'],
+                    'gateway_fee' => $fees['gateway_fee'],
+                    'custospark_fee' => $fees['custospark_fee'],
+                    'total' => round($subtotal + $fees['buyer_processing_fee'], 2),
                 ]);
+
+                $organiserName = $event->tenant?->name ?? 'Organiser';
+                $transactionLabel = $this->transactionLabel(
+                    $organiserName,
+                    $event->title,
+                    $order->reference,
+                    $fees['processing_fee_bearer'],
+                );
 
                 $payment = $this->paymentRepository->create([
                     'tenant_id' => $tenantId,
@@ -161,6 +184,10 @@ class OrderService implements OrderServiceInterface
                     'amount' => $order->total,
                     'currency' => $order->currency,
                     'status' => 'pending',
+                    'organiser_name' => $organiserName,
+                    'event_title' => $event->title,
+                    'transaction_label' => $transactionLabel,
+                    'fee_bearer_code' => EventFeeCalculator::bearerCode($fees['processing_fee_bearer']),
                 ]);
 
                 return [$order, $payment];
@@ -360,6 +387,20 @@ class OrderService implements OrderServiceInterface
         }
 
         return $expired;
+    }
+
+    private function transactionLabel(
+        string $organiserName,
+        string $eventTitle,
+        string $reference,
+        string $feeBearer,
+    ): string {
+        return mb_substr(
+            EventFeeCalculator::bearerCode($feeBearer).' | '
+                .$organiserName.' | '.$eventTitle.' | '.$reference,
+            0,
+            100,
+        );
     }
 
     private function uniqueReference(): string
