@@ -12,6 +12,7 @@ class TicketTypeRepository implements TicketTypeRepositoryInterface
     public function all(int $tenantId, array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return TicketType::query()
+            ->with('tenant')
             ->where('tenant_id', $tenantId)
             ->when($filters['search'] ?? null, fn ($q, $search) => $q->where('name', 'like', "%{$search}%"))
             ->when($filters['event_id'] ?? null, fn ($q, $eventId) => $q->where('event_id', $eventId))

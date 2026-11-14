@@ -54,6 +54,33 @@ class EventManagementTest extends TestCase
         $this->assertNotNull(Event::query()->find($eventId)->published_at);
     }
 
+    public function test_tenant_admin_can_change_currency_and_prices_follow_it(): void
+    {
+        $tenant = $this->makeTenant(['slug' => 'cocis', 'currency' => 'UGX']);
+        $admin = $this->makeAdmin($tenant);
+        $event = $this->makeEvent($tenant, [
+            'currency' => 'UGX',
+            'starts_at' => now()->addDays(30),
+        ]);
+        $ticketType = $this->makeTicketType($event, ['currency' => 'UGX', 'price' => 50000]);
+
+        Sanctum::actingAs($admin);
+
+        $this->patchJson('/api/v1/tenant/currency', ['currency' => 'USD'])
+            ->assertOk()
+            ->assertJsonPath('data.currency', 'USD');
+
+        $this->getJson("/api/v1/events/{$event->id}")
+            ->assertOk()
+            ->assertJsonPath('data.currency', 'USD');
+
+        $this->getJson("/api/v1/events/{$event->id}/ticket-types")
+            ->assertOk()
+            ->assertJsonPath('data.0.currency', 'USD');
+
+        $this->assertSame('UGX', $ticketType->fresh()->currency);
+    }
+
     public function test_tenant_admin_can_choose_who_pays_the_processing_fee(): void
     {
         $tenant = $this->makeTenant(['slug' => 'cocis']);

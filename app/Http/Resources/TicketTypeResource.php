@@ -9,6 +9,8 @@ class TicketTypeResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $tenantCurrency = $this->tenant?->currency ?? $this->currency;
+
         return [
             'id' => $this->id,
             'tenant_id' => $this->tenant_id,
@@ -16,7 +18,7 @@ class TicketTypeResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'price' => $this->price,
-            'currency' => $this->currency,
+            'currency' => $tenantCurrency,
             'quantity_total' => $this->quantity_total,
             'quantity_sold' => $this->quantity_sold,
             'admits' => $this->admits,

@@ -22,6 +22,8 @@ final class Permissions
 
     public const REPORTS_VIEW = 'reports.view';
 
+    public const SETTINGS_MANAGE = 'settings.manage';
+
     /**
      * @return array<string, array{name: string, permissions: list<string>}>
      */
@@ -36,6 +38,7 @@ final class Permissions
             self::PAYMENTS_VIEW,
             self::PAYOUTS_MANAGE,
             self::REPORTS_VIEW,
+            self::SETTINGS_MANAGE,
         ];
 
         return [

@@ -12,6 +12,8 @@ class EventResource extends JsonResource
     {
         $fees = EventFeeCalculator::percentages();
 
+        $tenantCurrency = $this->tenant?->currency ?? $this->currency;
+
         return [
             'id' => $this->id,
             'tenant_id' => $this->tenant_id,
@@ -29,7 +31,7 @@ class EventResource extends JsonResource
             'status' => $this->status,
             'banner_path' => $this->banner_path,
             'capacity' => $this->capacity,
-            'currency' => $this->currency,
+            'currency' => $tenantCurrency,
             'processing_fee_bearer' => EventFeeCalculator::normalizeBearer($this->processing_fee_bearer),
             'processing_fee_percent' => number_format($fees['processing_percent'], 2, '.', ''),
             'published_at' => $this->published_at?->toIso8601String(),

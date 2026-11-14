@@ -51,7 +51,7 @@ class TicketTypeService implements TicketTypeServiceInterface
         }
 
         $data['tenant_id'] = $tenantId;
-        $data['currency'] = $data['currency'] ?? $event->currency;
+        $data['currency'] = strtoupper((string) ($event->tenant?->currency ?? $event->currency ?? 'UGX'));
         $data['quantity_sold'] = 0;
 
         return $this->ticketTypeRepository->create($data);

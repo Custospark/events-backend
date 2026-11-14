@@ -13,6 +13,7 @@ Route::prefix('v1')->group(function (): void {
     });
 
     require __DIR__.'/api/v1/auth.php';
+    require __DIR__.'/api/v1/tenant.php';
     require __DIR__.'/api/v1/tenants.php';
     require __DIR__.'/api/v1/roles.php';
     require __DIR__.'/api/v1/users.php';

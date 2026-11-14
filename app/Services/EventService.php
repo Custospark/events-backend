@@ -6,6 +6,7 @@ use App\Models\Event;
 use App\Repositories\Contracts\EventRepositoryInterface;
 use App\Services\Contracts\EventServiceInterface;
 use App\Support\EventFeeCalculator;
+use App\Support\TenantContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -50,6 +51,9 @@ class EventService implements EventServiceInterface
 
     public function create(int $tenantId, array $data): Event
     {
+        $tenant = app(TenantContext::class)->get();
+        $data['currency'] = $tenant?->currency ?? ($data['currency'] ?? 'UGX');
+        $data['currency'] = strtoupper((string) $data['currency']);
         $data['tenant_id'] = $tenantId;
         $data['created_by'] = $data['created_by'] ?? auth()->id();
         $data['slug'] = $this->uniqueSlug($tenantId, $data['slug'] ?? $data['title']);
