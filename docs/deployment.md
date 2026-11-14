@@ -37,10 +37,12 @@ php artisan optimize:clear && php artisan config:cache && php artisan view:cache
 
 ## 1. Current production state (2026-11-14)
 
-- Backend repo deployed at commit `588fde6` (`main`): source commit `c93be0c`
-  plus the production web build.
-- Event admins and platform admins can edit the fee bearer. Existing orders
+- Backend repo deployed at commit `feef975` (`main`): backend currency source
+  `cbd2a36`, frontend source `e4670b2` and `3b0083d`, plus the production web build.
+- Event admins and platform admins can edit the fee bearer; existing orders
   keep the fee bearer recorded at transaction time.
+- Tenant settings can update the workspace currency; frontend Redux syncs the
+  active tenant currency across admin and public pricing views.
 - Admin success actions use toast feedback; fee breakdown remains internal.
 - Production DB `u214605677_events` contains the processing-fee migration.
   Existing seeded events were preserved; no production data was reset.
@@ -53,7 +55,7 @@ php artisan optimize:clear && php artisan config:cache && php artisan view:cache
   and `processing_fee_bearer`; fee breakdown stays internal.
 - Gateway descriptions include `PFB:CUSTOMER` or `PFB:ORGANIZER`.
 - Frontend build deployed from this workspace; live assets include
-  `assets/index-B-WEuK88.js` and `assets/index-BAu19NrL.css`.
+  `assets/index-BBl1u9jq.js` and `assets/index-g1AhMpMS.css`.
 - Production DB `u214605677_events` remains seeded with the original
   two tenants, three users, three events and six ticket types.
 - Tenant `cocis`: `College of Computing and Information Science`.
